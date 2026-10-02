@@ -1,0 +1,39 @@
+id: potluck-01
+title: Trouble after the community potluck
+seed: 4172
+setting:
+  attendees: 60
+  guest_list_completeness: 0.90
+pathogen:
+  name: Salmonella Enteritidis
+  incubation_hours: {median: 24, p95: 60}
+  symptoms: {diarrhea: 0.90, cramps: 0.80, fever: 0.70, vomiting: 0.30, bloody_stool: 0.10}
+foods:
+  - {id: chicken_salad, label: Chicken salad sandwiches, p_eaten: 0.55}
+  - {id: coleslaw, label: Coleslaw, p_eaten: 0.35}
+  - {id: fried_rice, label: Fried rice, p_eaten: 0.50}
+  - {id: cake, label: Chocolate cake, p_eaten: 0.70}
+  - {id: punch, label: Fruit punch, p_eaten: 0.60}
+menu_order: [cake, punch, fried_rice, coleslaw, chicken_salad]
+truth:
+  vehicle: chicken_salad
+  attack_rate_exposed: 0.60
+  attack_rate_unexposed: 0.05
+  process_failure: Cooked chicken cooled slowly in a deep stock pot overnight.
+recall: {p_forget_item: 0.10, p_false_item: 0.05}
+interviews: {suggested: 4, max: 6, minutes_per_topic: 5}
+tasks:
+  - {id: guest_list, label: Request the RSVP list, effort_min: 10, turnaround_hours: 2}
+  - {id: team_interviews, label: Send the collection team, effort_min: 15, turnaround_hours: 24}
+  - {id: stool_samples, label: Request stool samples, effort_min: 10, turnaround_hours: 48}
+  - {id: hold_leftovers, label: Preserve the leftovers, effort_min: 5, turnaround_hours: 0, window_closes_hour: 24}
+  - {id: leftover_testing, label: Test preserved leftovers, requires: hold_leftovers, effort_min: 10, turnaround_hours: 72}
+  - {id: food_prep_review, label: Environmental health review, effort_min: 10, turnaround_hours: 24}
+actions:
+  - {id: advise_guests, label: Advise guests on leftovers and severe illness, justified_if: cluster_confirmed}
+  - {id: refer_environmental_health, label: Refer to environmental health, justified_if: cluster_confirmed}
+  - {id: food_handler_guidance, label: Recommend safe cooling guidance, justified_if: process_failure_known}
+  - {id: close_hall, label: Recommend closing the hall, justified_if: ongoing_exposure}
+  - {id: public_notice, label: Recommend a public notice, justified_if: ongoing_exposure}
+events:
+  - {at_hour: 28, text: Three more guests call. They got sick Sunday; these are existing attendees, not new exposures.}

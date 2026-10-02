@@ -1,0 +1,5 @@
+library(shiny)
+library(bslib)
+options(sass.cache = FALSE)
+for (file in list.files("R", pattern = "\\.R$", full.names = TRUE)) source(file, local = TRUE, encoding = "UTF-8")
+shinyApp(app_ui(), app_server)
