@@ -5,9 +5,10 @@ next_button <- function(id, label) div(class = "step-end", actionButton(id, labe
 
 app_ui <- function() {
   widget <- identical(Sys.getenv("FIELDNOTES_CHAT_UI"), "shinychat")
+  guide_script <- paste0("guide.js?v=", unname(tools::md5sum("www/guide.js")))
   fluidPage(
     theme = bs_theme(version = 5, bg = "#f6f5f0", fg = "#203d38", primary = "#176956", base_font = "Segoe UI", heading_font = "Georgia"),
-    tags$head(tags$title("Fieldnotes · The community potluck"), tags$link(rel = "stylesheet", href = "style.css"), tags$script(src = "guide.js")),
+    tags$head(tags$title("Fieldnotes · The community potluck"), tags$link(rel = "stylesheet", href = "style.css"), tags$script(src = guide_script)),
     tags$header(class = "topbar", div(class = "brand", span(class = "brand-mark", "+"), "FIELDNOTES"), div(class = "clock", textOutput("clock", inline = TRUE), span("game time"))),
     div(class = "guided-shell",
       conditionalPanel("input.stage && input.stage !== 'briefing'",

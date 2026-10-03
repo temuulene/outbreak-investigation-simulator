@@ -18,6 +18,26 @@ document.addEventListener('click', function (event) {
   }
 });
 $(function () {
+  const chat = document.getElementById('chat');
+  if (chat) {
+    let scheduled = false;
+    const revealLatestAnswer = function () {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(function () {
+        scheduled = false;
+        const answer = chat.querySelector('.chat-answer:last-child');
+        if (!answer || !answer.getClientRects().length) return;
+        answer.scrollIntoView({
+          block: answer.offsetHeight > answer.parentElement.clientHeight ? 'start' : 'nearest',
+          inline: 'nearest',
+          behavior: 'instant'
+        });
+      });
+    };
+    new MutationObserver(revealLatestAnswer).observe(chat, {childList: true, subtree: true});
+    revealLatestAnswer();
+  }
   Shiny.addCustomMessageHandler('guide-focus', function (message) {
     requestAnimationFrame(function () {
       document.querySelectorAll('.tool').forEach(item => item.open = false);

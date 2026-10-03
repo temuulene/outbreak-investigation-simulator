@@ -4,6 +4,13 @@ Scripted interviews are the default and need no credentials. Explicit topic butt
 always use the authored engine. Free-text questions can optionally use a configured
 provider to recognize topics and choose a short connective from an approved list.
 
+With Gemini configured, a written question triggers a provider request when the
+topic is "Use my written question". Choosing an explicit topic uses the authored
+engine without calling Gemini. "Reply added · assisted" means a valid topic and
+connective selection was accepted; it does not mean Gemini wrote the answer.
+The only wording variation is the selected character's three preset connective
+styles (plain, warm, or thoughtful). There is no free-form creative answer mode.
+
 Open questions such as "Tell me about the potluck" receive an authored event
 overview from Pat, Lou, or a guest. Event timing is separate from illness onset.
 The overview does not unlock the complete menu, walk-in contacts, preparation
@@ -28,6 +35,11 @@ clear the submitted text; rejected submissions keep the draft. A draft or topic
 edited while a reply is pending, and another contact's controls, are preserved.
 Topic recognition is bounded, so the topic menu remains available for wording
 the matcher misses.
+
+The standard conversation panel brings the latest answer into view after Shiny
+has replaced its contents, including delayed assisted and fallback replies.
+Reading earlier messages does not itself trigger scrolling. Very long answers
+show their beginning so the remaining text can be read by scrolling.
 
 Set `FIELDNOTES_DIALOGUE_PROVIDER` to `gemini` or `ollama` and set
 `FIELDNOTES_DIALOGUE_MODEL` to an explicitly chosen, available model. Gemini uses

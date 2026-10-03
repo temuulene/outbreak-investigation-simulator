@@ -2580,7 +2580,7 @@
       "checksum": "ef5d93f74e431ff52e1e9a2cc51c070f"
     },
     "R/app_ui.R": {
-      "checksum": "7dc8d387193d64ce58f7e346d1d87fa6"
+      "checksum": "ce3a6a8ef3b9de19f5edd03adceb6d29"
     },
     "R/assessment.R": {
       "checksum": "44350996f61042885a883b0f1e2d5225"
@@ -2628,7 +2628,7 @@
       "checksum": "97cd6daff3e1453bd06f7e99ce5bfa84"
     },
     "www/guide.js": {
-      "checksum": "6a06574397aa0f0aa14277e1c8deab4d"
+      "checksum": "4cffba8be1a73e58edd313864d3f82b4"
     },
     "www/style.css": {
       "checksum": "a864fc6bc24842b9404fd5eb4c511bba"
