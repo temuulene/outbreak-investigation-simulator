@@ -2,11 +2,11 @@
 
 ## Natural assisted interviews
 
-- 523 expectations pass with no failures, errors, warnings or skips. New tests
+- 529 expectations pass with no failures, errors, warnings or skips. New tests
   cover bounded same-contact history, context-dependent follow-ups, reviewed
-  wording, unchanged evidence/collections/time, save/resume, explicit-topic
+  wording, protected cooking/food/symptom terms, unchanged evidence/collections/time, save/resume, explicit-topic
   assistance, separate writer/reviewer payloads, numeric/markup checks, rejection,
-  cancellation and timeout fallback. Overall line coverage is 86.3%.
+  cancellation and timeout fallback. Overall line coverage is 86.5%.
 - Live fictional Gemini requests returned accepted, differently worded replies.
   The local browser recognized "And who brought those?" after a menu question,
   used an authored contributor answer when rewriting was rejected, and displayed

@@ -66,6 +66,10 @@ Classification must contain exactly `topics` and `intro`, restricted to the cont
 allowed identifiers. Writing must contain exactly `reply`; review must contain exactly
 three true booleans: `supported`, `complete`, and `in_character`. Blank, oversized,
 HTML/URL-containing and numerically changed drafts are rejected deterministically.
+Key scenario terms present in the canonical answer must also survive verbatim
+(case-insensitive): names, roles, days, food labels, symptom names and important
+preparation clues such as "cooked", "deep stock pot", "overnight" and "mixed".
+The writer receives these locked terms explicitly. Surrounding wording can vary.
 The fresh review checks names, food identities, roles, uncertainty, negations,
 omissions and unsupported claims. This semantic review is probabilistic, rather than
 the earlier structural guarantee that all prose was authored. It reduces factual

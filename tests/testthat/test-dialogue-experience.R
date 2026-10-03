@@ -88,6 +88,17 @@ test_that("changed numbers, unsafe text and rejected reviews cannot become repli
   expect_false(dialogue_reply_validate("A reply", "A reply", c(good, list(extra = TRUE))))
 })
 
+test_that("natural wording retains critical method, food and symptom terms", {
+  good <- list(supported = TRUE, complete = TRUE, in_character = TRUE)
+  answer <- "I cooked the chicken, then left it cooling in a deep stock pot overnight."
+  expect_false(dialogue_reply_validate("I prepared the chicken and left it cooling in a deep stock pot overnight.", answer, good))
+  expect_true(dialogue_reply_validate("After I cooked the chicken, it stayed in a deep stock pot cooling overnight.", answer, good))
+  expect_false(dialogue_reply_validate("I was unwell.", "I had diarrhea and vomiting.", good))
+  expect_false(dialogue_reply_validate("I ate cake.", "I ate Chocolate cake.", good))
+  expect_false(dialogue_reply_validate("Lou brought the chicken salad sandwiches.", "Lou is the cook who brought the chicken salad sandwiches.", good))
+  expect_false(dialogue_reply_validate("We met Sunday.", "We met Saturday.", good))
+})
+
 test_that("rewriting failures retain successfully recognized topics and canonical facts", {
   before <- new_state(scenario())
   builder <- function(topics) tail(interview(before, "cook", "How did you keep it?", topics)$chats$cook, 1)[[1]]$reply
