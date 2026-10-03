@@ -8,6 +8,11 @@ The interface guides learners through one activity at a time. Evidence, delegate
 tasks, and protective actions stay a click away. Short checkpoint prompts preserve
 drafts when going back; advanced analysis and settings are optional disclosures.
 
+**[Open the live simulator](https://temuulen-outbreak-investigation-simulator.share.connect.posit.cloud/)**
+— hosted on Posit Connect Cloud. Allow about 80 minutes for an investigation.
+Use **Help & session → Save resumable session** to keep your progress before
+closing or refreshing the browser. Resume that file from the welcome screen.
+
 ## Run locally
 
 Use R 4.6.1 for the reviewed dependency lock. In this project directory:

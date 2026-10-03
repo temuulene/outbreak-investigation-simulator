@@ -38,6 +38,14 @@ access-controlled grades.
 
 ## Posit Connect Cloud
 
+The public pilot is available at
+[the live simulator](https://temuulen-outbreak-investigation-simulator.share.connect.posit.cloud/).
+The owner published it on 2026-10-03. A browser check confirmed the welcome screen,
+guided opening checkpoint, an assisted interview with authored facts, and a fresh
+second session. See [verification](verification.md) for the checked scope and
+remaining release checks. Save a resumable session before closing or refreshing;
+learner progress is not retained on the hosting server between sessions.
+
 The GitHub deployment entry point is `app.R` on `main`. Connect Cloud requires
 the committed `manifest.json`; it does not restore directly from `renv.lock`.
 Its reviewed runtime range ends at R 4.6.0. The manifest is generated under that
@@ -114,8 +122,10 @@ assisted deployment, check one successful live provider request and an outage
 fallback, plus two simultaneous browser sessions. Verify the public URL on a
 separate client and record the actual host, release commit, and date.
 
-Hosting destination and credentials are not configured in the repository.
+The public pilot uses Posit Connect Cloud. Keep hosting credentials and provider
+keys in private hosting settings and outside the repository.
 The local Docker engine was unavailable during verification, so a container build
-was not run. Local Gemini calls have been verified; public deployment, hosted
-provider calls, and human pilot validation must be recorded separately. Tests and
+was not run. Local Gemini calls and the hosted assisted interview have been
+verified. Hosted save/resume and export walkthroughs, forced provider-outage
+checks, and human pilot validation remain separate release checks. Tests and
 manifest generation do not establish those outcomes.

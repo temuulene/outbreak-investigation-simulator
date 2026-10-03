@@ -16,19 +16,21 @@ and collected evidence. Preserve existing learner decisions and transparent unce
 
 ## External release checks
 
-- [ ] Deploy to a configured host and verify the URL from another client.
+- [x] Publish to Posit Connect Cloud and verify the public URL in a fresh browser session.
+- [x] Verify a hosted assisted reply and a separate session's untouched welcome screen.
 - [ ] Build and run the container with a running Docker daemon.
-- [ ] Verify live-provider success, outage fallback, and independent sessions with
-      configured Gemini credentials or a local Ollama model.
+- [ ] Verify forced live-provider outage fallback and two simultaneous assisted
+      investigations; live Ollama remains optional and unverified.
+- [ ] Complete the hosted save/resume and export walkthrough.
 - [ ] Manually confirm browser upload/resume; server import/restore tests pass.
 - [ ] Observe real pilot participants and record usability and learning findings.
 
-Local software verification is recorded in [verification.md](verification.md).
-Public deployment requires a hosting destination and its account credentials;
-live-provider verification additionally requires a configured Gemini key or a
-running Ollama service with the selected model. Container execution needs a running
-Docker daemon. See [deployment.md](deployment.md) for the reviewed manifests and
-commands. No hosting account or provider service is configured by the repository.
+Software and hosted smoke verification are recorded in [verification.md](verification.md).
+The [public pilot](https://temuulen-outbreak-investigation-simulator.share.connect.posit.cloud/)
+is hosted on Posit Connect Cloud. Hosting credentials and provider keys remain
+private and outside the repository. Container execution needs a running Docker
+daemon. See [deployment.md](deployment.md) for manifests, publishing settings,
+and update instructions.
 
 Real pilot participation and educational-effectiveness validation require human
 testers. Provide a pilot observation workflow; do not label those activities completed

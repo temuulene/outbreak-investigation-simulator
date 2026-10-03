@@ -50,7 +50,11 @@ On 2026-10-03, a local `gemini-3.5-flash-lite` request and a browser interview
 both recorded assisted replies with authored facts. ellmer enum arrays return R
 factors; their labels are normalized before strict validation. Keys remain in an
 ignored local environment file. The regression runner disables real providers and
-credentials temporarily. Live Ollama, hosted integration, an unrelated live
-question, a forced live-service failure, and two simultaneous assisted browser
-sessions remain separate deployment checks. Promotional credit deduction must be
+credentials temporarily. On the same date, the
+[public Connect Cloud pilot](https://temuulen-outbreak-investigation-simulator.share.connect.posit.cloud/)
+returned an authored menu answer with `Reply added · assisted`. A second session
+started at the untouched welcome screen. The public UI does not expose the
+provider/model settings. Live Ollama, an unrelated live question, a forced
+live-service failure, and two simultaneous assisted investigations remain
+separate deployment checks. Promotional credit deduction must be
 confirmed in the billing account; a successful API reply does not establish it.

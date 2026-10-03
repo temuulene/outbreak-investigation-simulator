@@ -57,5 +57,8 @@ not claim a validated automated competence score. A human pilot observation shee
 supports the testing milestone in the sketch.
 
 Deployment packaging includes an explicit container copy inventory and a
-shinyapps.io deployment script. Public hosting and successful live-provider calls
-remain external release checks requiring a configured destination and credentials.
+shinyapps.io deployment script, plus a verified R 4.6.0 manifest for Connect Cloud.
+The [public pilot](https://temuulen-outbreak-investigation-simulator.share.connect.posit.cloud/)
+is hosted on Posit Connect Cloud. A hosted assisted interview and a separate fresh
+session were checked on 2026-10-03; the remaining hosted release checks are listed
+in [verification.md](verification.md).

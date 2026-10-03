@@ -61,6 +61,25 @@
 
 ## Release and external checks
 
+The owner published the public pilot on Posit Connect Cloud on 2026-10-03:
+[live simulator](https://temuulen-outbreak-investigation-simulator.share.connect.posit.cloud/).
+A fresh browser visit loaded the welcome screen. The three opening reflection
+screens saved and advanced to the interview step. Asking Pat about the menu
+returned scenario-authored food names, displayed `Reply added · assisted`, and
+advanced game time from Monday 09:00 to 09:05. A second browser tab opened at the
+untouched welcome screen while the first retained its interview. This confirms
+basic hosted interaction and separate starting sessions; it is not a load test or
+a complete two-session assisted investigation.
+
+The repository baseline during that check was `5d74a05`, which passed
+[run 37107329943](https://github.com/temuulene/outbreak-investigation-simulator/actions/runs/37107329943)
+under Linux R 4.6.0 and R 4.6.1, including Shiny initialization, all 222 expectations,
+scenario-review drift checks, manifest validation, and deterministic manifest
+regeneration. The public UI does not expose the hosted revision SHA, runtime
+version, or provider/model settings, so these were not independently read from
+the host. The manifest targets R 4.6.0; the hosted UI confirms an accepted assisted
+reply rather than exposing provider credentials.
+
 The expanded implementation at `ba1961a` passed
 [GitHub Actions run 37103565970](https://github.com/temuulene/outbreak-investigation-simulator/actions/runs/37103565970).
 The Ubuntu runner installed system prerequisites, restored the lockfile, passed
@@ -69,13 +88,11 @@ check. The first expanded run exposed missing Linux development headers; the
 workflow and container manifest now include those prerequisites. The original
 main release also passed its earlier workflow.
 
-The Connect Cloud manifest is ready, but hosting credentials have not been
-configured and the app has not been published there. The local Docker daemon was
-unavailable, so a container build was not run. Public hosting, live Ollama
-requests, live-provider outage checks, and simultaneous assisted browser sessions
-remain unverified. Local Gemini success does not establish promotional credit
-deduction or the configuration of a hosted deployment. The scripted investigation
-needs no external provider.
+The local Docker daemon was unavailable, so a container build was not run. Hosted
+save/resume and workbook downloads, live Ollama requests, forced live-provider
+outage checks, and two simultaneous assisted investigations remain unverified.
+Successful assisted replies do not establish promotional credit deduction. The
+scripted investigation needs no external provider.
 
 No real pilot participants have tested the app. Educational effectiveness,
 facilitator scoring reliability, and a full accessibility audit remain unverified.
