@@ -36,6 +36,52 @@ keys, `.Renviron`, or deployment tokens. Session files hold learner writing; sto
 and share them deliberately. Facilitator overrides are local review notes, not
 access-controlled grades.
 
+## Posit Connect Cloud
+
+The GitHub deployment entry point is `app.R` on `main`. Connect Cloud requires
+the committed `manifest.json`; it does not restore directly from `renv.lock`.
+Its reviewed runtime range ends at R 4.6.0. The manifest is generated under that
+version with the exact package versions in the existing lockfile. Local R 4.6.1
+and container settings can remain unchanged.
+
+Publish from [Connect Cloud](https://connect.posit.cloud/): select Shiny, this
+repository, branch `main`, and primary file `app.R`. Configure private Variables
+before enabling assisted dialogue:
+
+```text
+FIELDNOTES_DIALOGUE_PROVIDER=gemini
+FIELDNOTES_DIALOGUE_MODEL=gemini-3.5-flash-lite
+GOOGLE_API_KEY=<enter the existing key privately in the hosting settings>
+```
+
+Use the host's secret variable controls, not a committed `.Renviron`. The
+scripted investigation also works without any variables. After publishing,
+verify the generated public URL, two separate sessions, save/resume, exports,
+and a successful assisted interview. The Free plan has a monthly usage allowance;
+Google promotional credits fund eligible Gemini usage separately from hosting.
+
+To regenerate the manifest, use R 4.6.0 and the restored project library:
+
+```text
+Rscript setup.R
+Rscript scripts/write-connect-manifest.R
+```
+
+The generator includes only the app, dependency files, R code, static assets,
+scenario definitions, and starter analysis. Git history, tests, documents,
+artifacts, saved learner sessions, and local keys are excluded.
+
+GitHub Actions tests R 4.6.0 and 4.6.1, initializes the Shiny app, regenerates the
+manifest under R 4.6.0, and checks for drift. If code or dependencies change,
+download `connect-cloud-manifest` from that workflow run and review/commit the
+updated `manifest.json`. The artifact is uploaded before the drift check so it
+remains available when the committed manifest needs refreshing.
+
+Sources: [R runtime and dependency requirements](https://docs.posit.co/connect-cloud/user/platform/r.html),
+[GitHub publishing](https://docs.posit.co/connect-cloud/user/publish/github.html),
+[private variables](https://docs.posit.co/connect-cloud/user/manage/content_settings.html),
+and [plans](https://connect.posit.cloud/plans).
+
 ## Container
 
 Build with `docker build -t fieldnotes .`, then run
@@ -67,6 +113,7 @@ fallback, plus two simultaneous browser sessions. Verify the public URL on a
 separate client and record the actual host, release commit, and date.
 
 Hosting destination and credentials are not configured in the repository.
-The local Docker engine was stopped during verification, so a container build was
-not run. Public deployment, live provider calls, and human pilot validation
-must be recorded separately; local tests do not establish those outcomes.
+The local Docker engine was unavailable during verification, so a container build
+was not run. Local Gemini calls have been verified; public deployment, hosted
+provider calls, and human pilot validation must be recorded separately. Tests and
+manifest generation do not establish those outcomes.

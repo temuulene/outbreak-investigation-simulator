@@ -19,3 +19,22 @@ rsconnect::writeManifest(
   appPrimaryDoc = "app.R",
   appMode = "shiny"
 )
+
+manifest <- jsonlite::fromJSON("manifest.json", simplifyVector = FALSE)
+lock <- jsonlite::fromJSON("renv.lock", simplifyVector = FALSE)
+stopifnot(
+  identical(manifest$platform, "4.6.0"),
+  identical(manifest$metadata$appmode, "shiny"),
+  setequal(names(manifest$files), files)
+)
+for (file in names(manifest$files)) {
+  stopifnot(identical(unname(tools::md5sum(file)), manifest$files[[file]]$checksum))
+}
+for (package in names(manifest$packages)) {
+  stopifnot(identical(
+    manifest$packages[[package]]$description$Version,
+    lock$Packages[[package]]$Version
+  ))
+}
+cat("Verified manifest:", length(manifest$files), "files and",
+    length(manifest$packages), "locked packages under R", manifest$platform, "\n")

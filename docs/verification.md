@@ -30,6 +30,14 @@
 - The reviewed lockfile restored successfully into the project-local ignored
   library. The deployment manifest resolves 73 dependency records with rsconnect.
   Application and container copy manifests exclude artifacts and local secrets.
+- Connect Cloud compatibility passed under Linux R 4.6.0 and R 4.6.1 in
+  [run 37106741570](https://github.com/temuulene/outbreak-investigation-simulator/actions/runs/37106741570).
+  Each runtime restored the pinned dependencies, passed all 222 expectations,
+  regenerated both scenario reviews, and passed the documentation drift check.
+  `manifest.json` was generated with rsconnect under R 4.6.0: 22 runtime files,
+  73 packages matching `renv.lock`, and no references to local secrets or learner
+  saves. The source file checksums were also verified. No application or package
+  version changes were needed for the older supported R runtime.
 
 ## Browser checks
 
@@ -61,8 +69,9 @@ check. The first expanded run exposed missing Linux development headers; the
 workflow and container manifest now include those prerequisites. The original
 main release also passed its earlier workflow.
 
-Hosting destination and credentials have not been configured. The local Docker
-daemon was stopped, so a container build was not run. Public hosting, live Ollama
+The Connect Cloud manifest is ready, but hosting credentials have not been
+configured and the app has not been published there. The local Docker daemon was
+unavailable, so a container build was not run. Public hosting, live Ollama
 requests, live-provider outage checks, and simultaneous assisted browser sessions
 remain unverified. Local Gemini success does not establish promotional credit
 deduction or the configuration of a hosted deployment. The scripted investigation

@@ -19,6 +19,8 @@ jobs:
           sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev libicu-dev zlib1g-dev
       - name: Restore locked dependencies
         run: Rscript setup.R
+      - name: Initialize Shiny application
+        run: Rscript -e 'stopifnot(inherits(source("app.R")$value, "shiny.appobj"))'
       - run: Rscript tests/run.R
       - run: Rscript scripts/review-seed.R
       - run: Rscript scripts/review-scenarios.R
@@ -26,12 +28,12 @@ jobs:
       - name: Generate Connect Cloud manifest
         if: matrix.r-version == '4.6.0'
         run: Rscript scripts/write-connect-manifest.R
-      - name: Check deployment manifest drift
-        if: matrix.r-version == '4.6.0'
-        run: git diff --exit-code -- manifest.json
       - uses: actions/upload-artifact@v4
         if: matrix.r-version == '4.6.0'
         with:
           name: connect-cloud-manifest
           path: manifest.json
           if-no-files-found: error
+      - name: Check deployment manifest drift
+        if: matrix.r-version == '4.6.0'
+        run: git diff --exit-code -- manifest.json
