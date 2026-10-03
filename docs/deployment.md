@@ -75,7 +75,9 @@ GitHub Actions tests R 4.6.0 and 4.6.1, initializes the Shiny app, regenerates t
 manifest under R 4.6.0, and checks for drift. If code or dependencies change,
 download `connect-cloud-manifest` from that workflow run and review/commit the
 updated `manifest.json`. The artifact is uploaded before the drift check so it
-remains available when the committed manifest needs refreshing.
+remains available when the committed manifest needs refreshing. Installation
+timestamps are omitted from package metadata so identical locked dependencies
+produce the same committed manifest.
 
 Sources: [R runtime and dependency requirements](https://docs.posit.co/connect-cloud/user/platform/r.html),
 [GitHub publishing](https://docs.posit.co/connect-cloud/user/publish/github.html),

@@ -35,6 +35,10 @@ for (package in names(manifest$packages)) {
     manifest$packages[[package]]$description$Version,
     lock$Packages[[package]]$Version
   ))
+  # Omit installation timestamps so locked packages regenerate consistently.
+  manifest$packages[[package]]$description$Built <- NULL
 }
+jsonlite::write_json(manifest, "manifest.json", auto_unbox = TRUE,
+                     pretty = TRUE, null = "null")
 cat("Verified manifest:", length(manifest$files), "files and",
     length(manifest$packages), "locked packages under R", manifest$platform, "\n")
