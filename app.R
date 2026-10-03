@@ -1,3 +1,4 @@
+if (dir.exists("artifacts/library")) .libPaths(c(normalizePath("artifacts/library"), .libPaths()))
 library(shiny)
 library(bslib)
 options(sass.cache = FALSE)

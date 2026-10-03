@@ -12,7 +12,8 @@ new_state <- function(sc) {
     log = list(), chats = list(), interviewed = character(), menu = FALSE, walk_ins = FALSE,
     process_known = FALSE, late_event = FALSE, checkpoints = list(), actions = list(),
     definition = default_definition(), case_defs = list(default_definition()), downloads = list(), checks = list(),
-    recommendation = NULL, retry = NULL, revealed = FALSE)
+    recommendation = NULL, retry = NULL, revealed = FALSE, fired_events = character(),
+    media_events = list(), media_responses = list(), instructor_reviews = list())
 }
 
 record_event <- function(s, type, detail) {
@@ -30,13 +31,21 @@ advance_time <- function(s, hours) {
   repeat {
     due <- vapply(s$queue, `[[`, numeric(1), "due")
     next_due <- if (length(due)) min(due) else Inf
-    event_due <- if (!s$late_event) 28 else Inf
+    events <- s$sc$events
+    pending <- which(!vapply(events, `[[`, character(1), "id") %in% s$fired_events)
+    event_due <- if (length(pending)) min(vapply(events[pending], `[[`, numeric(1), "at_hour")) else Inf
     at <- min(next_due, event_due)
     if (at > target) break
     s$clock <- at
     if (event_due == at) {
-      s$late_event <- TRUE
-      s <- add_evidence(s, "Guest reports", s$sc$events[[1]]$text)
+      for (idx in pending[vapply(events[pending], `[[`, numeric(1), "at_hour") == at]) {
+        event <- events[[idx]]
+        s$fired_events <- c(s$fired_events, event$id)
+        if (event$type == "media") s$media_events <- append(s$media_events, list(event))
+        if (event$type == "reports") s$late_event <- TRUE
+        s <- add_evidence(s, event$source, event$text)
+        s <- record_event(s, "scheduled_event", event)
+      }
     }
     ready <- which(due == at)
     jobs <- s$queue[ready]
@@ -64,7 +73,7 @@ complete_task <- function(s, job) {
     s <- collect_records(s, sampled, character())
     s$collected$stool_positive[s$collected$id %in% sampled] <- TRUE
   } else if (job$id == "leftover_testing") {
-    message <- paste("Preserved chicken salad tests positive for", s$sc$pathogen$name, "matching the stool isolates.")
+    message <- paste("Preserved", food_labels(s$sc)[[s$sc$truth$vehicle]], "tests positive for", s$sc$pathogen$name, "matching the stool isolates.")
   } else message <- "Pat labels and preserves the leftovers for environmental health sampling."
   add_evidence(s, job$label, message)
 }
@@ -73,7 +82,7 @@ request_task <- function(s, id, audience = "all", domains = character(), foods =
   task <- Filter(function(x) x$id == id, s$sc$tasks)
   if (!length(task)) stop("Unknown task.")
   task <- task[[1]]
-  if (id %in% c(s$completed, vapply(s$queue, `[[`, character(1), "id"))) stop("That task has already been requested.")
+  if (id %in% c(if (id != "team_interviews") s$completed, vapply(s$queue, `[[`, character(1), "id"))) stop("That task has already been requested.")
   if (!is.null(task$requires) && !task$requires %in% s$completed) stop("Preserve the leftovers before requesting testing.")
   if (!is.null(task$window_closes_hour) && s$clock >= task$window_closes_hour) stop("The fridge has already been cleared; leftovers are unavailable.")
   job <- list(id = id, label = task$label, requested = s$clock,
@@ -99,4 +108,14 @@ take_action <- function(s, id, reason) {
     justified = justified, evidence = s$evidence)
   s$actions <- append(s$actions, list(entry))
   record_event(s, "action", entry)
+}
+
+
+submit_media_response <- function(s, id, text, evidence_ids = integer()) {
+  if (length(id) != 1 || !id %in% vapply(s$media_events, `[[`, character(1), "id")) stop("That media event is not available yet.")
+  if (length(text) != 1 || !nzchar(trimws(text)) || nchar(text) > 4000) stop("Write a response of 1 to 4000 characters.")
+  if (anyNA(evidence_ids) || any(evidence_ids != floor(evidence_ids)) || any(!evidence_ids %in% seq_along(s$evidence))) stop("Choose available evidence references.")
+  entry <- list(time = s$clock, id = id, text = trimws(text), evidence_ids = unique(evidence_ids), evidence = s$evidence[evidence_ids])
+  s$media_responses <- append(s$media_responses, list(entry))
+  record_event(s, "media_response", entry)
 }

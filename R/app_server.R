@@ -1,7 +1,15 @@
 app_server <- function(input, output, session) {
-  s <- reactiveVal(new_state(read_scenario()))
+  s <- reactiveVal(start_session())
+  dialogue <- dialogue_session()
+  dialogue_busy <- reactiveVal(FALSE)
+  dialogue_note <- reactiveVal(NULL)
+  repeat_plan <- reactiveVal(FALSE)
+  debrief_generation <- reactiveVal(0L)
+  session$onSessionEnded(function() dialogue_cancel(dialogue))
   snapshot <- reactiveVal(NULL)
   feedback <- reactiveVal(NULL)
+  strata_result <- reactiveVal(NULL)
+  strata_snapshot <- reactiveVal(NULL)
   steps <- guide_steps()
   guide_step <- reactiveVal(1L)
   furthest_step <- reactiveVal(1L)
@@ -54,6 +62,10 @@ app_server <- function(input, output, session) {
         div(class = "progress-fill", style = paste0("width:", max(1, index - 1) / 9 * 100, "%"))))
   })
   output$pending_badge <- renderUI(if (length(s()$queue)) span(class = "pending-badge", length(s()$queue)))
+  output$media_badge <- renderUI({
+    pending <- setdiff(vapply(s()$media_events, `[[`, character(1), "id"), vapply(s()$media_responses, `[[`, character(1), "id"))
+    if (length(pending)) span(class = "pending-badge", `aria-label` = "Media requests awaiting a response", length(pending))
+  })
   output$checkpoint_prompt <- renderUI({
     prompt <- switch(as.character(guide_step()),
       `2` = "Before asking questions, capture your first thoughts. You aren’t expected to know the source yet.",
@@ -84,17 +96,23 @@ app_server <- function(input, output, session) {
     updateSelectInput(session, "character", choices = choices,
       selected = if (!is.null(selected) && selected %in% choices) selected else "organizer")
   })
-  observeEvent(TRUE, {
+  observe({
     sc <- s()$sc
     tasks <- Filter(function(x) x$id != "team_interviews", sc$tasks)
     updateSelectInput(session, "task", choices = setNames(vapply(tasks, `[[`, character(1), "id"),
       vapply(tasks, function(t) paste0(t$label, " · ", t$effort_min, " min + ", t$turnaround_hours, " h"), character(1))))
     updateSelectInput(session, "action", choices = setNames(vapply(sc$actions, `[[`, character(1), "id"), vapply(sc$actions, `[[`, character(1), "label")))
-  }, once = TRUE)
+  })
   observe({
     state <- s()
     labels <- food_labels(state$sc)
     if (!state$menu) labels <- labels[intersect(names(labels), names(state$collected))]
+    exposure <- input$strata_exposure
+    if (is.null(exposure) || !exposure %in% names(labels)) exposure <- head(names(labels), 1L)
+    groups <- setdiff(names(labels), exposure)
+    selected_group <- intersect(isolate(input$strata_food), groups)
+    updateSelectInput(session, "strata_food", choices = setNames(groups, labels[groups]), selected = if (length(selected_group)) selected_group else head(groups, 1L))
+    updateSelectInput(session, "strata_exposure", choices = setNames(names(labels), labels), selected = exposure)
     updateSelectInput(session, "analysis_food", choices = setNames(names(labels), labels), selected = isolate(input$analysis_food))
   })
   output$clock <- renderText(game_time(s()$clock))
@@ -105,7 +123,13 @@ app_server <- function(input, output, session) {
     div(class = "metrics", div(strong(nrow(state$collected)), "guest records"),
       div(strong(length(state$interviewed)), "of 6 contacts"), div(strong(length(state$checkpoints)), "checkpoints saved"))
   })
-  observeEvent(input$begin, go_step(2L))
+  observeEvent(input$begin, {
+    if (furthest_step() == 1L) {
+      ok <- run(function(state) start_session(if (is.null(input$scenario_id)) "potluck-01" else input$scenario_id, isTRUE(input$randomize)), NULL)
+      if (!ok) return()
+    }
+    go_step(2L)
+  })
   observeEvent(input$hint, showModal(modalDialog(title = "A useful next step",
     switch(steps$page[guide_step()],
       decision = "Write what you know now. ‘Still open’ and ‘not enough evidence yet’ are useful answers when you explain why. You can read the notebook without losing this draft.",
@@ -123,7 +147,61 @@ app_server <- function(input, output, session) {
       div(class = "chat-question", eyebrow(paste("YOU /", game_time(x$time))), x$question),
       div(class = "chat-answer", x$reply))))
   })
-  observeEvent(input$ask, { run(function(state) interview(state, input$character, input$question, input$topic), "Reply added to your notebook.") })
+  observeEvent(input$character, {
+    topics <- dialogue_topics(input$character)
+    updateSelectInput(session, "topic", choices = c("Use my written question" = "auto", setNames(topics, gsub("_", " ", topics))), selected = "auto")
+  })
+  chat_notice <- function(text) {
+    if (identical(Sys.getenv("FIELDNOTES_CHAT_UI"), "shinychat")) shinychat::chat_append("conversation", tags$p(text), session = session)
+  }
+  ask_question <- function(question) {
+    if (dialogue_busy()) {dialogue_note("Please wait for the current reply."); return(FALSE)}
+    if (!is.character(question) || length(question) != 1L || is.na(question) || nchar(question) > 1200L) {showNotification("Enter a question of up to 1200 characters.", type = "warning"); return(FALSE)}
+    if (is.null(input$character) || !input$character %in% available_characters(s())) return(FALSE)
+    topic <- input$topic
+    if (is.null(topic) || !topic %in% c("auto", dialogue_topics(input$character))) topic <- "auto"
+    if (Sys.getenv("FIELDNOTES_DIALOGUE_PROVIDER", "scripted") == "scripted") {
+      return(run(function(state) interview(state, input$character, question, topic), "Reply added to your notebook."))
+    }
+    before <- isolate(s())
+    dialogue_busy(TRUE)
+    dialogue_note("Preparing a reply… You can keep reading your notebook.")
+    promise <- tryCatch(dialogue_request_async(dialogue, input$character, question, topic), error = function(e) {
+      dialogue_busy(FALSE); dialogue_note(conditionMessage(e)); NULL
+    })
+    if (is.null(promise)) return(FALSE)
+    request_token <- dialogue$token
+    promises::then(promise, onFulfilled = function(result) {
+      if (!dialogue_result_current(dialogue, result)) return(NULL)
+      dialogue_busy(FALSE)
+      if (!identical(isolate(s()), before)) {
+        dialogue_note("Your investigation changed while the reply was preparing. Ask again to use the current evidence.")
+        chat_notice("Your investigation changed while the reply was preparing. Ask again to use the current evidence.")
+        return(NULL)
+      }
+      run(function(state) dialogue_apply(state, result), NULL)
+      dialogue_note(if (result$status == "scripted") "Reply added to your notebook." else paste("Reply added ·", result$status))
+      NULL
+    }, onRejected = function(error) {
+      if (!identical(dialogue$token, request_token)) return(NULL)
+      dialogue_busy(FALSE); dialogue_note("Reply unavailable. Please try again.")
+      chat_notice("Reply unavailable. Please try again."); NULL
+    })
+  }
+  observeEvent(input$ask, ask_question(if (identical(Sys.getenv("FIELDNOTES_CHAT_UI"), "shinychat")) "" else input$question))
+  observeEvent(input$conversation_user_input, {
+    handled <- ask_question(dialogue_input_text(input$conversation_user_input))
+    if (identical(handled, FALSE)) chat_notice(if (dialogue_busy()) "Please wait for the current reply." else "Choose a contact and enter a text question of up to 1,200 characters, or use the topic menu.")
+  })
+  observeEvent(list(input$character, s()$chats), {
+    if (!identical(Sys.getenv("FIELDNOTES_CHAT_UI"), "shinychat")) return()
+    shinychat::chat_clear("conversation", session = session)
+    for (entry in s()$chats[[input$character]]) {
+      shinychat::chat_append("conversation", tags$p(entry$question), role = "user", session = session)
+      shinychat::chat_append("conversation", tags$p(entry$reply), session = session)
+    }
+  }, ignoreInit = TRUE)
+  output$dialogue_status <- renderUI(if (!is.null(dialogue_note())) p(class = "small-note", role = "status", dialogue_note()))
   output$interview_progress <- renderUI(p(class = "interview-count", paste(length(s()$interviewed), "of 6 contacts used · Aim for 3–4, then continue when ready.")))
   menu_known <- reactiveVal(FALSE)
   observe(menu_known(s()$menu))
@@ -147,7 +225,7 @@ app_server <- function(input, output, session) {
   })
   output$case_preview <- renderUI({
     d <- draft_definition()
-    if (d$start > d$end) return(div(class = "note", "The end of the window must follow the start."))
+    if (d$start >= d$end) return(div(class = "note", "The end of the window must follow the start."))
     counts <- table(factor(classify_cases(s()$collected, d), levels = c("Case", "Non-case", "Unknown")))
     div(class = "preview", eyebrow("LIVE PREVIEW · CURRENTLY COLLECTED RECORDS"),
       paste(paste(names(counts), counts, sep = ": "), collapse = " · "))
@@ -155,7 +233,7 @@ app_server <- function(input, output, session) {
   observeEvent(input$save_definition, {
     saved <- run(function(state) {
     d <- draft_definition()
-    if (!is.finite(d$start) || !is.finite(d$end) || d$start < 0 || d$start > d$end) stop("Enter a valid onset window.")
+    if (!is.finite(d$start) || !is.finite(d$end) || d$start < 0 || d$start >= d$end) stop("Enter a valid onset window with an end after its start.")
     if (!nzchar(trimws(d$reason))) stop("Explain the reason for this definition.")
     state$definition <- d
     state$case_defs <- append(state$case_defs, list(c(d, list(time = state$clock))))
@@ -164,7 +242,7 @@ app_server <- function(input, output, session) {
     if (saved) go_step(6L)
   })
   output$list_ready <- reactive("guest_list" %in% s()$completed)
-  output$team_sent <- reactive("team_interviews" %in% c(s()$completed, vapply(s()$queue, `[[`, character(1), "id")))
+  output$team_sent <- reactive(!repeat_plan() && "team_interviews" %in% c(s()$completed, vapply(s()$queue, `[[`, character(1), "id")))
   outputOptions(output, "list_ready", suspendWhenHidden = FALSE)
   outputOptions(output, "team_sent", suspendWhenHidden = FALSE)
   output$list_help <- renderUI({
@@ -199,7 +277,18 @@ app_server <- function(input, output, session) {
       p(if (input$audience == "ill") "Only guests who have reported illness. This selection cannot provide a valid full-cohort comparison." else "All available contacts, whether ill or well. Ask about walk-ins to complete coverage."),
       p(paste(length(input$foods), "food exposures selected. Unasked foods will remain unknown.")))
   })
-  observeEvent(input$send_team, run(function(state) request_task(state, "team_interviews", input$audience, input$domains, input$foods)))
+  observeEvent(input$repeat_collection, {
+    if (!nzchar(trimws(input$repeat_reason))) {showNotification("Explain what you need to collect next.", type = "warning"); return()}
+    if (any(vapply(s()$queue, function(x) x$id == "team_interviews", logical(1)))) {showNotification("Wait for the current collection first.", type = "warning"); return()}
+    repeat_plan(TRUE)
+  })
+  observeEvent(input$send_team, {
+    saved <- run(function(state) {
+      if (repeat_plan()) state <- record_event(state, "repeat_collection_reason", input$repeat_reason)
+      request_task(state, "team_interviews", input$audience, input$domains, input$foods)
+    })
+    if (saved) repeat_plan(FALSE)
+  })
   observeEvent(input$request_task, run(function(state) request_task(state, input$task)))
   output$queue <- renderUI({
     state <- s()
@@ -208,7 +297,8 @@ app_server <- function(input, output, session) {
       if (length(state$completed)) p(class = "small-note", paste(length(state$completed), "tasks completed")))
   })
   observeEvent(input$wait, run(function(state) {
-    times <- c(vapply(state$queue, `[[`, numeric(1), "due"), if (!state$late_event) 28)
+    pending <- Filter(function(e) !e$id %in% state$fired_events, state$sc$events)
+    times <- c(vapply(state$queue, `[[`, numeric(1), "due"), vapply(pending, `[[`, numeric(1), "at_hour"))
     if (!length(times)) stop("No pending results or scheduled reports.")
     advance_time(state, min(times) - state$clock)
   }))
@@ -228,6 +318,7 @@ app_server <- function(input, output, session) {
     s(record_event(state, "analysis_snapshot", list(id = snap$id, time = snap$time)))
     snapshot(snap)
     feedback(NULL)
+    strata_result(NULL); strata_snapshot(NULL)
     snap
   }
   observeEvent(input$freeze, tryCatch({freeze_snapshot(); showNotification("Analysis snapshot frozen. Downloads and calculation checks use this exact version.")}, error = function(e) showNotification(conditionMessage(e), type = "warning")))
@@ -296,6 +387,7 @@ app_server <- function(input, output, session) {
   debrief_ready <- reactiveVal(FALSE)
   observe(debrief_ready(!is.null(s()$recommendation)))
   output$debrief <- renderUI({
+    debrief_generation()
     if (!debrief_ready()) return(panel("Pause, then reflect", p("Complete your investigation and recommendation first.")))
     # Keep the form mounted when optional actions or the reveal update state.
     state <- isolate(s())
@@ -309,8 +401,11 @@ app_server <- function(input, output, session) {
   })
   output$final_recommendation <- renderText(s()$recommendation)
   output$learning_profile <- renderUI({
-    profile <- learning_profile(s())
-    tagList(lapply(names(profile), function(name) div(class = "profile-row", h4(name), p(profile[[name]]))))
+    profile <- assessment_profile(s())
+    tagList(p(profile$caveat), lapply(seq_len(nrow(profile$criteria)), function(i) {
+      row <- profile$criteria[i, ]
+      div(class = "profile-row", h4(row$label), strong(row$status), p(row$feedback), p(class = "small-note", row$evidence))
+    }), disclosure("Facilitator review", p("A local review note, not an authenticated grade. Overrides remain in the session audit record."), selectInput("review_criterion", "Criterion", choices = setNames(profile$criteria$id, profile$criteria$label)), selectInput("review_status", "Judgment", c("Evidence recorded", "Needs attention", "Instructor review")), textAreaInput("review_reason", "Reason for this judgment"), actionButton("review_save", "Save facilitator judgment")))
   })
   output$truth_reveal <- renderUI({
     state <- s()
@@ -333,10 +428,64 @@ app_server <- function(input, output, session) {
   })
   output$retry_saved <- renderUI(if (!is.null(s()$retry)) div(class = "note", "Retry saved. Export your session record for facilitator review."))
   observeEvent(input$reveal, {state <- s(); state$revealed <- TRUE; s(state)})
+  observeEvent(input$review_save, run(function(state) instructor_override(state, input$review_criterion, input$review_status, input$review_reason)))
+  observe({
+    state <- s()
+    events <- state$media_events
+    ids <- vapply(events, `[[`, character(1), "id")
+    updateSelectInput(session, "media_id", choices = setNames(ids, vapply(events, `[[`, character(1), "source")), selected = intersect(isolate(input$media_id), ids))
+    updateCheckboxGroupInput(session, "media_evidence", choices = setNames(seq_along(state$evidence), vapply(state$evidence, `[[`, character(1), "finding")), selected = intersect(isolate(input$media_evidence), as.character(seq_along(state$evidence))))
+  })
+  output$media_events <- renderUI({
+    events <- s()$media_events
+    if (!length(events)) return(p("No media requests yet. Requests arrive as game time advances."))
+    tagList(lapply(events, function(e) div(class = "note", strong(e$source), p(e$text))), lapply(s()$media_responses, function(e) div(class = "evidence-entry", strong("Your response"), p(e$text))))
+  })
+  observeEvent(input$respond_media, run(function(state) submit_media_response(state, input$media_id, input$media_text, as.integer(input$media_evidence))))
+  observeEvent(input$show_strata, {
+    tryCatch({
+      snap <- get_snapshot()
+      strata_result(stratified_rates(snap$data, input$strata_exposure, input$strata_food))
+      strata_snapshot(snap$id)
+    }, error = function(e) {strata_result(NULL); strata_snapshot(NULL); showNotification(conditionMessage(e), type = "warning")})
+  })
+  output$strata_info <- renderUI(if (!is.null(strata_snapshot())) p(class = "small-note", paste("Comparison uses frozen snapshot", strata_snapshot(), ".")))
+  output$strata_table <- renderTable(strata_result(), digits = 3, na = "Not estimable")
+  export_guide <- function() list(step = isolate(guide_step()), furthest = isolate(furthest_step()), drafts = isolate(checkpoint_drafts()), current_fields = setNames(lapply(checkpoint_fields(), function(field) isolate(input[[field]])), checkpoint_fields()), recommendation_draft = isolate(input$recommendation))
+  output$resume_record <- downloadHandler("fieldnotes-resume.json", function(file) save_session(isolate(s()), file, export_guide()))
+  restore_upload <- function(upload) {
+    req(upload$datapath)
+    tryCatch({
+      restored <- restore_session(upload$datapath)
+      g <- validate_guide_restore(restored$guide, nrow(steps))
+      dialogue_cancel(dialogue); dialogue_busy(FALSE)
+      s(restored$state)
+      snapshot(if (length(restored$state$downloads)) tail(restored$state$downloads, 1L)[[1]] else NULL)
+      feedback(NULL); repeat_plan(FALSE)
+      strata_result(NULL); strata_snapshot(NULL)
+      debrief_generation(isolate(debrief_generation()) + 1L)
+      index <- if (is.null(g$step)) 1L else as.integer(g$step)
+      if (length(index) != 1L || is.na(index) || index < 1L || index > nrow(steps)) index <- 1L
+      furthest <- if (is.null(g$furthest)) index else max(index, min(nrow(steps), as.integer(g$furthest)))
+      guide_step(index); furthest_step(furthest); checkpoint_drafts(if (is.null(g$drafts)) list() else g$drafts)
+      updateTabsetPanel(session, "stage", selected = steps$page[index])
+      for (field in checkpoint_fields()) if (!is.null(g$current_fields[[field]])) {
+        if (field == "confidence") updateRadioButtons(session, field, selected = g$current_fields[[field]]) else if (field == "suspect") updateTextInput(session, field, value = g$current_fields[[field]]) else updateTextAreaInput(session, field, value = g$current_fields[[field]])
+      }
+      if (!is.null(g$recommendation_draft)) updateTextAreaInput(session, "recommendation", value = g$recommendation_draft)
+      d <- restored$state$definition
+      updateSelectInput(session, "person", selected = d$person); updateSelectInput(session, "clinical", selected = d$clinical)
+      updateNumericInput(session, "start", value = d$start); updateNumericInput(session, "end", value = d$end)
+      updateCheckboxInput(session, "lab", value = d$lab); updateTextInput(session, "definition_reason", value = d$reason)
+      showNotification("Session restored. Continue where you left off.")
+    }, error = function(e) showNotification(conditionMessage(e), type = "warning"))
+  }
+  observeEvent(input$resume_upload, restore_upload(input$resume_upload))
+  observeEvent(input$welcome_resume, restore_upload(input$welcome_resume))
   output$session_record <- downloadHandler("investigation-record.json", function(file) {
     state <- isolate(s())
     # Exclude all hidden records, even after reveal. This is a learner evidence export.
-    record <- state[c("clock", "evidence", "log", "chats", "checkpoints", "actions", "case_defs", "downloads", "checks", "recommendation", "retry")]
+    record <- state[c("clock", "evidence", "log", "chats", "checkpoints", "actions", "case_defs", "downloads", "checks", "recommendation", "retry", "media_events", "media_responses", "instructor_reviews")]
     record$guide <- list(step = isolate(guide_step()), drafts = isolate(checkpoint_drafts()),
       current_fields = setNames(lapply(checkpoint_fields(), function(field) isolate(input[[field]])), checkpoint_fields()),
       recommendation_draft = isolate(input$recommendation), retry_draft = isolate(input$retry_text))

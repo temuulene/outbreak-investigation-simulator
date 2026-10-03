@@ -61,3 +61,15 @@ write_workbook <- function(data, path, sc) {
   openxlsx::setColWidths(wb, "Read me", cols = 1, widths = 115)
   openxlsx::saveWorkbook(wb, path, overwrite = TRUE)
 }
+
+stratified_rates <- function(data, exposure, stratifier) {
+  if (length(exposure) != 1 || length(stratifier) != 1 || exposure == stratifier) stop("Choose two different exposures.")
+  if (!stratifier %in% names(data)) stop("Collect the stratifying exposure first.")
+  dplyr::bind_rows(lapply(c(FALSE, TRUE), function(level) {
+    subset <- data[which(!is.na(data[[stratifier]]) & data[[stratifier]] == level), , drop = FALSE]
+    result <- attack_rates(subset, exposure)
+    result$stratum <- paste(stratifier, if (level) "exposed" else "unexposed")
+    result$excluded_stratifier_unknown <- sum(is.na(data[[stratifier]]))
+    result
+  }))
+}

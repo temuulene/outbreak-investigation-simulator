@@ -1,46 +1,72 @@
-# Verification — 2026-10-01
+# Verification — 2026-10-02
 
-## Guided UX revision
+## Completed software checks
 
-- Replaced the three-column dashboard with a single guided activity and optional
-  notebook, task/action, and session disclosures. The opening screen has one CTA.
-- All 96 expectations pass after the revision. Server tests exercise guided
-  checkpoints in order, direct guest-list retrieval, waiting for team results,
-  analysis, recommendation, retry, and reveal. Invalid checkpoint submission stays
-  on the current step. Back/revisit preserves drafts without moving game time.
-- Browser checked Start, all three initial reasoning prompts, automatic progression
-  to interviews, restored answers when returning, and exclusive optional tools.
-  The corrected navigation handler focuses the main landmark. A 390 px viewport
-  check found no horizontal overflow and retained a usable single-column form.
-- The redesigned app is previewed on port 3875 to leave the existing port 3874
-  session untouched. `Rscript run.R` continues to use the documented default port.
-- These checks verify implementation, not a measured improvement in learner
-  engagement. The first learner pilot is still outstanding.
+- `Rscript tests/run.R`: 215 passing expectations, with no failures or warnings.
+  Coverage includes both scenarios, bounded seed screening, time-ordered events,
+  repeated collection, stratified denominators, media evidence references,
+  formative assessment, facilitator overrides, and guided navigation.
+- Save/resume tests reconstruct an identical investigation, preserve frozen
+  snapshots and future task results, and reject malformed types, references,
+  chronology, contact histories, and oversized files before replacing a session.
+  The server restores the latest snapshot and refreshes debrief review controls.
+- Optional dialogue tests cover structured output validation, authored factual
+  replies, separate sessions, request/input/rate limits, stale responses, errors,
+  and timeout fallback. Chat-widget regression tests cover its list-shaped text
+  input and reject unsupported attachment payloads.
+- Both seed-review scripts regenerate their committed instructor reviews.
+  The intermediate reference seed shows the apparent crude coleslaw association
+  attenuating in chicken-salad strata. These are synthetic teaching examples;
+  screening conditions the generated seeds rather than estimating real-world
+  outbreak frequencies.
+- The reviewed lockfile restored successfully into the project-local ignored
+  library. The deployment manifest resolves 73 dependency records with rsconnect.
+  Application and container copy manifests exclude artifacts and local secrets.
 
-## Initial build
+## Browser checks
 
-- `Rscript tests/run.R`: 72 passing expectations across the engine and Shiny
-  session tests; no test warnings or failures in that run.
-- `Rscript scripts/review-seed.R`: generated the reference-plan seed review.
-  The simulated vehicle retains the largest observed association (RR 5.59).
-  Collection is evaluated at the time the team returns; a later-onset guest can
-  still be symptom-free then. This is intentional, not a changed hidden dataset.
-- Actual browser: opened briefing, interviewed Pat, received the guest list,
-  sent the team, viewed 60 records, froze a snapshot, and downloaded an Excel
-  workbook. Inspected the responsive layout at 390 px and normal panel width.
-- Added fixed links to evidence and actions at narrower widths. Fresh final
-  session renders the briefing and Monday 09:00 clock.
-- Workbook generation tests inspect its three sheets. Automated server tests
-  cover three checkpoints, recommendation, debrief rendering, retry, and reveal.
-- `renv.lock` records installed runtime and testing dependencies. A clean-machine
-  restore was not performed. The GitHub Actions workflow is provided but has not
-  run remotely; this directory started as an empty, uncommitted repository.
+- The default experience retains one main activity, three short reflection
+  prompts, optional tools, and a single opening action. Intro interviews and the
+  intermediate challenge were exercised in the browser.
+- Scheduled late reports and a media inquiry were viewed, an evidence-linked
+  media response was saved, and a resumable JSON file was downloaded. That actual
+  downloaded file restored successfully through the R importer. Browser automation
+  could not open the upload chooser; the server upload/restore path is covered by
+  tests, but a manual browser upload remains a release walkthrough item.
+- The optional shinychat interface sent an open question, displayed the authored
+  menu reply, cleared its pending state, and advanced game time by five minutes.
+  Switching to the cook showed a separate conversation. No browser console errors
+  or Shiny output errors were observed in those checks.
+- The welcome screen at a 390 px viewport had no horizontal overflow. The final
+  desktop preview shows the completed guided interface.
+- Earlier browser checks covered guest-list retrieval, team collection, frozen
+  snapshots and Excel export. Server tests also exercise the full investigation,
+  recommendation, debrief, retry, reveal, and draft-preserving navigation.
 
-The R executable used locally was R 4.6.1. The host's inherited `C.UTF-8` locale
-is not recognised by Windows R; tests ran with `LC_ALL=English_United States.utf8`.
-`run.R` corrects the character locale if needed. App source is explicitly UTF-8,
-and the Sass disk cache is disabled to avoid relying on a writable global cache.
+## Release and external checks
 
-No real pilot participants have tested the app yet. Educational effectiveness,
-facilitator scoring reliability, a full accessibility audit, and live LLM safety
-remain unverified. No deployment or outbound API integration was performed.
+The initial GitHub Actions run passed on the original main release. The expanded
+release is checked by a workflow that restores the lockfile, runs the full suite,
+regenerates both seed reviews, and rejects documentation drift. Record the release
+run and commit after it completes.
+
+Hosting destination and credentials have not been configured. The local Docker
+daemon was stopped, so a container build was not run. Public hosting, live Gemini
+or Ollama requests, live-provider outage checks, and simultaneous assisted browser
+sessions remain unverified. The scripted investigation needs no external provider.
+
+No real pilot participants have tested the app. Educational effectiveness,
+facilitator scoring reliability, and a full accessibility audit remain unverified.
+Use the pilot guide and observation template to record those human checks.
+
+## Local environment
+
+The local runtime was R 4.6.1 on Windows. The inherited `C.UTF-8` locale is not
+recognised by Windows R, so tests used `LC_ALL=English_United States.utf8`.
+`run.R` corrects the character locale when needed. App source is UTF-8, and the
+Sass disk cache is disabled. Dependencies restore inside `artifacts/`; no global
+library is changed.
+
+The original build passed 72 expectations and the first guided revision passed
+96 expectations on 2026-10-01. Those historical results are superseded by the
+expanded suite above.

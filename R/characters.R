@@ -17,9 +17,9 @@ classify_topics <- function(question) {
 
 interview <- function(s, character, question, selected_topic = "auto") {
   if (!character %in% unname(available_characters(s))) stop("Choose an available interview contact.")
-  if (!nzchar(trimws(question)) && selected_topic == "auto") stop("Enter a question or choose a topic.")
+  if (!nzchar(trimws(question)) && identical(selected_topic, "auto")) stop("Enter a question or choose a topic.")
   if (!character %in% s$interviewed && length(s$interviewed) >= s$sc$interviews$max) stop("The six-interview limit has been reached.")
-  topics <- if (selected_topic == "auto") classify_topics(question) else selected_topic
+  topics <- if (identical(selected_topic, "auto")) classify_topics(question) else selected_topic
   allowed <- if (character == "organizer") c("menu", "guest_list", "walk_ins", "leftovers", "symptoms") else if (character == "cook") c("preparation", "storage", "menu") else c("menu", "symptoms", "onset", "demographics", "health_care_visits")
   topics <- intersect(topics, allowed)
   replies <- character()

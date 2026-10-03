@@ -2,8 +2,8 @@ Package: outbreakstudio
 Title: Outbreak Investigation Learning Simulator
 Version: 0.1.0
 Authors@R: person("Temuulen", "Enebish", role = "aut")
-Description: A private, scripted point-source outbreak learning simulator.
+Description: A guided point-source outbreak learning simulator with optional grounded dialogue.
 Encoding: UTF-8
 Depends: R (>= 4.3)
-Imports: shiny, bslib, yaml, dplyr, openxlsx, jsonlite
-Suggests: testthat, renv, pak
+Imports: shiny, bslib, yaml, dplyr, openxlsx, jsonlite, ellmer, promises, later, shinychat
+Suggests: testthat, renv, pak, rsconnect

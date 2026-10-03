@@ -8,7 +8,10 @@ generate_data <- function(sc) {
   n <- sc$setting$attendees
   truth <- data.frame(id = seq_len(n), age = sample(5:80, n, TRUE),
     sex = sample(c("F", "M"), n, TRUE), on_list = runif(n) < sc$setting$guest_list_completeness)
-  for (f in sc$foods) truth[[f$id]] <- runif(n) < f$p_eaten
+  for (f in sc$foods) {
+    probability <- if (is.null(f$conditional_on)) f$p_eaten else ifelse(truth[[f$conditional_on]], f$p_if_exposed, f$p_if_unexposed)
+    truth[[f$id]] <- runif(n) < probability
+  }
   risk <- ifelse(truth[[sc$truth$vehicle]], sc$truth$attack_rate_exposed, sc$truth$attack_rate_unexposed)
   truth$ill <- runif(n) < risk
   inc <- sc$pathogen$incubation_hours

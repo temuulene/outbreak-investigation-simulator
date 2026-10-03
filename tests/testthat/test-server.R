@@ -72,3 +72,128 @@ test_that("navigation preserves checkpoint drafts and never advances time", {
     expect_equal(guide_step(), 1L)
   })
 })
+
+
+test_that("optional workflows preserve session evidence and navigation", {
+  old <- setwd(root)
+  on.exit(setwd(old), add = TRUE)
+  library(shiny)
+  shiny::testServer(app_server, {
+    session$setInputs(scenario_id = "potluck-02", randomize = FALSE, begin = 1)
+    expect_equal(s()$sc$id, "potluck-02")
+    session$setInputs(character = "organizer", topic = "auto", question = strrep("x", 1201), ask = 1)
+    expect_length(s()$interviewed, 0)
+    session$setInputs(question = "menu", ask = 2)
+    expect_true(s()$menu)
+    session$setInputs(wait = 1)
+    session$setInputs(wait = 2)
+    expect_length(s()$media_events, 1)
+    session$setInputs(media_id = "press-call", media_text = "Several reports are being investigated. The source remains uncertain. We are collecting comparable histories.", media_evidence = "1", respond_media = 1)
+    expect_length(s()$media_responses, 1)
+    session$setInputs(review_criterion = "communication", review_status = "Instructor review", review_reason = "Review uncertainty and supporting evidence", review_save = 1)
+    expect_length(s()$instructor_reviews, 1)
+    path <- tempfile(fileext = ".json")
+    save_session(s(), path, list(step = 3L, furthest = 3L))
+    restored_clock <- s()$clock
+    s(start_session())
+    restore_upload(list(datapath = path))
+    expect_equal(s()$clock, restored_clock)
+    expect_equal(s()$sc$id, "potluck-02")
+    expect_equal(guide_step(), 3L)
+    before <- s()
+    save_session(start_session(), path, list(step = list("bad")))
+    restore_upload(list(datapath = path))
+    expect_identical(s(), before)
+  })
+})
+
+test_that("resume navigation rejects malformed fields before state changes", {
+  expect_error(validate_guide_restore(list(step = NaN)), "step")
+  expect_error(validate_guide_restore(list(step = 3, furthest = 2)), "order")
+  expect_error(validate_guide_restore(list(current_fields = list(suspect = list("bad")))), "draft")
+  expect_equal(validate_guide_restore(list(step = 2))$furthest, 2L)
+})
+
+test_that("both conversation interfaces build without credentials", {
+  old <- setwd(root)
+  on.exit(setwd(old), add = TRUE)
+  library(shiny)
+  library(bslib)
+  options(sass.cache = FALSE)
+  withr::local_envvar(FIELDNOTES_CHAT_UI = "shinychat")
+  html <- as.character(app_ui())
+  expect_match(html, "conversation")
+  expect_match(html, "Choose a challenge")
+  expect_match(html, "Resume a saved session")
+})
+
+
+test_that("repeat collection requires a reason and keeps the frozen analysis", {
+  old <- setwd(root)
+  on.exit(setwd(old), add = TRUE)
+  library(shiny)
+  shiny::testServer(app_server, {
+    s(full_plan())
+    freeze_snapshot()
+    first <- snapshot()
+    session$setInputs(repeat_reason = "", repeat_collection = 1)
+    expect_false(repeat_plan())
+    session$setInputs(repeat_reason = "Add health care histories", repeat_collection = 2)
+    expect_true(repeat_plan())
+    session$setInputs(audience = "all", domains = c("symptoms", "onset", "health_care_visits"), foods = names(food_labels(s()$sc)), send_team = 1)
+    expect_false(repeat_plan())
+    expect_true(any(vapply(s()$queue, function(job) job$id == "team_interviews", logical(1))))
+    session$setInputs(collection_done = 1)
+    expect_true("health_care_visits" %in% names(s()$collected))
+    expect_identical(snapshot(), first)
+  })
+})
+
+test_that("restoring preserves the latest frozen snapshot and rejects zero-width definitions", {
+  old <- setwd(root)
+  on.exit(setwd(old), add = TRUE)
+  library(shiny)
+  shiny::testServer(app_server, {
+    s(full_plan())
+    freeze_snapshot()
+    frozen <- snapshot()
+    path <- tempfile(fileext = ".json")
+    save_session(s(), path, list(step = 7L, furthest = 7L))
+    restore_upload(list(datapath = path))
+    expect_identical(snapshot(), frozen)
+    session$setInputs(person = "all", clinical = "standard", start = 12, end = 12,
+      lab = FALSE, definition_reason = "No interval", save_definition = 1)
+    expect_equal(s()$definition$start, 0)
+    expect_equal(guide_step(), 7L)
+  })
+})
+
+test_that("stratification uses its own food selection and clears when the snapshot changes", {
+  old <- setwd(root)
+  on.exit(setwd(old), add = TRUE)
+  library(shiny)
+  shiny::testServer(app_server, {
+    s(full_plan())
+    session$setInputs(analysis_food = "cake", strata_exposure = "coleslaw",
+      strata_food = "chicken_salad", show_strata = 1)
+    expect_true(all(strata_result()$food == "coleslaw"))
+    expect_equal(strata_snapshot(), snapshot()$id)
+    freeze_snapshot()
+    expect_null(strata_result())
+  })
+})
+
+test_that("widget text submission follows the same interview boundary", {
+  old <- setwd(root)
+  on.exit(setwd(old), add = TRUE)
+  library(shiny)
+  withr::local_envvar(FIELDNOTES_CHAT_UI = "shinychat")
+  shiny::testServer(app_server, {
+    session$setInputs(character = "organizer", topic = "auto", conversation_user_input = list("menu"))
+    expect_true(s()$menu)
+    expect_equal(s()$chats$organizer[[1]]$question, "menu")
+    before <- s()
+    session$setInputs(conversation_user_input = list("storage", list(type = "image")))
+    expect_identical(s(), before)
+  })
+})

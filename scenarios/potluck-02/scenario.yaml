@@ -1,8 +1,8 @@
-id: potluck-01
-title: Trouble after the community potluck
+id: potluck-02
+title: Two foods, one shared story
 seed: 4172
 setting:
-  attendees: 60
+  attendees: 180
   guest_list_completeness: 0.90
 pathogen:
   name: Salmonella Enteritidis
@@ -10,7 +10,7 @@ pathogen:
   symptoms: {diarrhea: 0.90, cramps: 0.80, fever: 0.70, vomiting: 0.30, bloody_stool: 0.10}
 foods:
   - {id: chicken_salad, label: Chicken salad sandwiches, p_eaten: 0.55}
-  - {id: coleslaw, label: Coleslaw, p_eaten: 0.35}
+  - {id: coleslaw, label: Coleslaw, p_eaten: 0.35, conditional_on: chicken_salad, p_if_exposed: 0.80, p_if_unexposed: 0.20}
   - {id: fried_rice, label: Fried rice, p_eaten: 0.50}
   - {id: cake, label: Chocolate cake, p_eaten: 0.70}
   - {id: punch, label: Fruit punch, p_eaten: 0.60}
@@ -20,7 +20,7 @@ truth:
   attack_rate_exposed: 0.60
   attack_rate_unexposed: 0.05
   process_failure: Cooked chicken cooled slowly in a deep stock pot overnight.
-recall: {p_forget_item: 0.10, p_false_item: 0.05}
+recall: {p_forget_item: 0.03, p_false_item: 0.02}
 interviews: {suggested: 4, max: 6, minutes_per_topic: 5}
 tasks:
   - {id: guest_list, label: Request the RSVP list, effort_min: 10, turnaround_hours: 2}
@@ -38,3 +38,6 @@ actions:
 events:
   - {id: press-call, type: media, at_hour: 36, source: Local reporter, text: "A reporter asks whether the potluck food caused illness and whether the hall should close. Explain what is known, uncertain, and being done."}
   - {at_hour: 28, text: Three more guests call. They got sick Sunday; these are existing attendees, not new exposures.}
+
+difficulty: Intermediate
+analysis: {stratifier: coleslaw}

@@ -1,0 +1,14 @@
+*
+!Dockerfile
+!renv.lock
+!app.R
+!run.R
+!DESCRIPTION
+!R/
+!R/**
+!www/
+!www/**
+!scenarios/
+!scenarios/**
+!starter/
+!starter/**

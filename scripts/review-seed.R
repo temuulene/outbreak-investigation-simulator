@@ -1,3 +1,4 @@
+if (dir.exists("artifacts/library")) .libPaths(c(normalizePath("artifacts/library"), .libPaths()))
 for (file in list.files("R", pattern = "\\.R$", full.names = TRUE)) source(file, encoding = "UTF-8")
 s <- new_state(read_scenario())
 s <- interview(s, "organizer", "menu and missing walk-ins")

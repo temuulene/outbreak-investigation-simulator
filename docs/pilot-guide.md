@@ -1,6 +1,6 @@
 # Facilitator pilot guide
 
-This is a fictional, scripted training exercise, not a clinical decision system.
+This is a fictional training exercise with scripted dialogue by default.
 Plan roughly 80 minutes: briefing 5, assessment 10, interviews and planning 20,
 analysis 20, recommendation 10, debrief and retry 15. These are proposed timings,
 not findings from a user test.
@@ -25,7 +25,9 @@ The meal occurred Saturday at 18:00 (39 hours before the clock starts).
 5. Delegate appropriate lab/environmental tasks and advance to due results.
 6. Freeze a line-list snapshot; download CSV plus R script or Excel workbook.
    Check attack rates and RR. Interpret uncertainty, incomplete data, and recall.
-7. Save the analysis checkpoint and recommendation. Review the profile and
+7. When a media request arrives, draft a short response distinguishing known
+   findings, uncertainty, and actions. Cite the notebook entries you used.
+8. Save the analysis checkpoint and recommendation. Review the profile and
    contemporaneous evidence; retry one decision. Export the session record.
 
 ## Review rubric
@@ -52,26 +54,43 @@ questions and classifier errors; the topic menu is always available. Ask for a
 short transfer example and a five-minute retry. Two or three testers can expose
 usability problems, but cannot establish educational effectiveness.
 
+## Intermediate exercise
+
+Choose the intermediate scenario in the optional welcome settings. Compare crude
+food associations, then choose two foods in the optional stratified analysis.
+Discuss whether an association persists within strata, the size of each comparison
+group, missing exposure histories, and the limits of observational evidence.
+Do not announce the simulated vehicle before learners form their own explanation.
+
+Save a resumable JSON file before closing. It restores a local session; it is not
+an authenticated assessment submission. A facilitator can add a reasoned review
+judgment, retained alongside the learner's evidence and decisions.
+
+Use [the observation sheet](pilot-observation-template.md) to record usability
+findings. Randomized runs are screened against a reference collection plan;
+that screening does not guarantee a useful result for every learner's choices.
+
 ## Known pilot boundaries
 
-- One reviewed seed and one point-source scenario. No secondary transmission.
-- Scripted topic detection; no live LLM, provider credential, or external request.
-- Six available contacts, per-topic time cost, a single delegated questionnaire.
-  A revised questionnaire requires a new session; individual interviews can add
-  fields after delegation. Case definitions can be revised throughout.
+- Two point-source scenarios, fixed or screened random seeds. No secondary transmission.
+- Scripted topic detection by default. Optional provider-assisted topic selection
+  requires server configuration; factual replies remain authored by the engine.
+- Six available contacts and per-topic time cost. A revised delegated questionnaire
+  can add missing fields after an earlier collection returns. Individual interviews
+  also add fields. Case definitions can be revised throughout.
 - Lab sampling is simplified to up to three already reported ill guests; only
   those records receive positive stool status. Unsampled guests remain unknown.
-- No patient identifiers, real guest records, authentication, cloud hosting, or
-  resumable sessions. Export before closing; refresh creates a fresh session.
+- No real guest records or learner authentication. Refresh creates a fresh session;
+  upload a previously saved resume file to continue. Hosting is configured separately.
 - Scenario YAML configures seed, foods, risks, symptoms, tasks, and action rules.
   Character prose and the supported case-definition templates are authored in R;
   this is not yet a general scenario authoring platform.
 
-## Future dialogue adapter
+## Optional dialogue adapter
 
-Keep the scripted path as the baseline. A later ellmer adapter should classify
-topics into a constrained schema, receive only allowed facts for that character,
-preserve numeric/time strings, reject unsupported pathogen knowledge, and fall
-back to the authored answer after two failed checks. Never give an LLM the state
-object or truth table. Validate with the first pilot's actual question corpus
-before enabling it. Do not collect API keys in the learner UI.
+Keep the scripted path as the baseline. The ellmer adapter classifies topics into
+a constrained schema and selects an approved introductory phrase. It receives
+the current question and allowed topic vocabulary; the engine supplies all facts.
+Invalid output, timeout, and provider errors use authored fallback responses.
+See [dialogue configuration and limits](dialogue.md). Validate with the first
+pilot's actual question corpus before enabling it. Keys belong on the server.

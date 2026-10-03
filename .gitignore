@@ -6,3 +6,8 @@ renv/library/
 renv/staging/
 *.log
 artifacts/
+
+.env
+.env.*
+!.env.example
+rsconnect/

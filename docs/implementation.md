@@ -29,5 +29,33 @@ Dependency APIs checked against the official [Shiny download documentation](http
 and [bslib theme documentation](https://rstudio.github.io/bslib/reference/bs_theme.html).
 All data are fictional; authored scenario probabilities were supplied in the sketch.
 
-Deferred per the sketch: live LLM dialogue and shinychat, random seeds, potluck-02
-confounding, media simulation, public deployment, and automated reasoning scores.
+## Expansion — 2026-10-02
+
+The optional welcome settings select either potluck scenario and a fixed or
+screened random seed. The intermediate scenario correlates two food exposures;
+stratified comparisons use collected records in a frozen snapshot. Scheduled media
+requests and evidence-linked learner responses are retained in the audit record.
+Repeated collection can add missing fields after an earlier questionnaire returns.
+
+Optional ellmer assistance selects permitted topic identifiers and reviewed
+connective text. The engine supplies all factual replies, including exact numbers
+and onset times. This conservative adapter avoids free-form factual generation.
+Requests have session, spacing, input-length, and deadline limits. Errors and
+invalid output fall back to scripted replies; stale asynchronous replies cannot
+overwrite changed investigation state. An optional shinychat widget uses the
+same engine boundary and contact-specific histories.
+
+Versioned JSON save/resume reconstructs private records locally from the scenario
+and seed. Imports are bounded and validated before replacing current work; the
+latest frozen snapshot is restored. Learner exports include media and facilitator
+review records and exclude hidden guest tables.
+
+The five-domain formative profile displays transparent process indicators and
+contemporaneous reasoning/evidence. Calculation accuracy is checked automatically;
+nuanced reasoning receives facilitator review with an auditable rationale. It does
+not claim a validated automated competence score. A human pilot observation sheet
+supports the testing milestone in the sketch.
+
+Deployment packaging includes an explicit container copy inventory and a
+shinyapps.io deployment script. Public hosting and successful live-provider calls
+remain external release checks requiring a configured destination and credentials.
