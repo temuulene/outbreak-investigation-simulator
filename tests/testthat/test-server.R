@@ -292,3 +292,37 @@ test_that("a delayed reply preserves a new draft or a different contact's contro
     expect_null(updates$topic)
   })
 })
+
+test_that("the assisted UI passes scoped context and applies reviewed wording", {
+  withr::local_dir(root)
+  withr::local_envvar(FIELDNOTES_DIALOGUE_PROVIDER = "gemini", FIELDNOTES_DIALOGUE_MODEL = "test")
+  request_environment <- environment(app_server)
+  original_classifier <- get("dialogue_provider_async", envir = request_environment)
+  original_writer <- get("dialogue_rewrite_async", envir = request_environment)
+  withr::defer(assign("dialogue_provider_async", original_classifier, envir = request_environment))
+  withr::defer(assign("dialogue_rewrite_async", original_writer, envir = request_environment))
+  histories <- list()
+  assign("dialogue_provider_async", function(question, character, provider, model, history = list()) {
+    histories[[length(histories) + 1L]] <<- history
+    promises::promise_resolve(list(topics = "menu", intro = "plain"))
+  }, envir = request_environment)
+  assign("dialogue_rewrite_async", function(..., answer) promises::promise_resolve(list(
+    reply = paste("Here's what I remember:", answer),
+    review = list(supported = TRUE, complete = TRUE, in_character = TRUE))), envir = request_environment)
+  shiny::testServer(app_server, {
+    initial_evidence <- length(s()$evidence)
+    session$setInputs(character = "organizer", topic = "auto", question = "menu", ask = 1)
+    deadline <- Sys.time() + 2
+    while (isolate(dialogue_busy()) && Sys.time() < deadline) later::run_now(0.01)
+    expect_match(s()$chats$organizer[[1]]$reply, "Here's what I remember:", fixed = TRUE)
+    expect_match(dialogue_note(), "Gemini-assisted reply", fixed = TRUE)
+    dialogue$last <- -Inf
+    session$setInputs(question = "Tell me more", ask = 2)
+    deadline <- Sys.time() + 2
+    while (isolate(dialogue_busy()) && Sys.time() < deadline) later::run_now(0.01)
+    expect_length(histories[[1]], 0)
+    expect_length(histories[[2]], 1)
+    expect_identical(histories[[2]][[1]]$reply, s()$chats$organizer[[1]]$reply)
+    expect_length(s()$evidence, initial_evidence + 2L)
+  })
+})

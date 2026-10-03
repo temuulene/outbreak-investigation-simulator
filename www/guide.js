@@ -18,6 +18,14 @@ document.addEventListener('click', function (event) {
   }
 });
 $(function () {
+  Shiny.addCustomMessageHandler('dialogue-busy', function (message) {
+    const button = document.getElementById('ask');
+    if (!button) return;
+    if (!button.dataset.readyLabel) button.dataset.readyLabel = button.textContent;
+    button.disabled = message.busy;
+    button.setAttribute('aria-busy', String(message.busy));
+    button.textContent = message.busy ? 'Preparing reply…' : button.dataset.readyLabel;
+  });
   const chat = document.getElementById('chat');
   if (chat) {
     let scheduled = false;

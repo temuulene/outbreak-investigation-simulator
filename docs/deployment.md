@@ -23,10 +23,13 @@ Set environment variables before starting R (or in private hosting secrets):
   model on that service first.
 - `FIELDNOTES_CHAT_UI=shinychat` enables the optional conversation widget.
 
-Only question text and the allowed topic list are sent to the provider. Never
-enter personal or patient information. Responses are validated topic selections
-and optional reviewed connective phrases, then scenario-authored factual replies.
-The backend has a 30-request session cap, 2-second spacing and 20-second timeout;
+The provider receives the question, up to four recent exchanges with the selected
+contact, and the canonical answer needed for rewriting and review. Other contacts,
+reported tables and the hidden answer key stay in R. Use fictional investigation
+questions only. Natural wording is checked against the canonical answer; evidence
+and state remain engine-authored. See [dialogue](dialogue.md) for validation limits.
+The backend has a 30-assisted-turn session cap (at most 90 provider requests),
+2-second spacing and a 20-second deadline for the complete pipeline;
 provider failures use authored fallback. The session ignores replies made stale
 by a restored session or an intervening investigation change. Provider usage may
 incur charges. No provider is required for the complete investigation.

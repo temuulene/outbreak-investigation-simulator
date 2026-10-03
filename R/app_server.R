@@ -3,6 +3,7 @@ app_server <- function(input, output, session) {
   dialogue <- dialogue_session()
   dialogue_busy <- reactiveVal(FALSE)
   dialogue_note <- reactiveVal(NULL)
+  observe(session$sendCustomMessage("dialogue-busy", list(busy = dialogue_busy())))
   repeat_plan <- reactiveVal(FALSE)
   debrief_generation <- reactiveVal(0L)
   session$onSessionEnded(function() dialogue_cancel(dialogue))
@@ -178,7 +179,14 @@ app_server <- function(input, output, session) {
     before <- isolate(s())
     dialogue_busy(TRUE)
     dialogue_note("Preparing a reply… You can keep reading your notebook.")
-    promise <- tryCatch(dialogue_request_async(dialogue, input$character, question, topic), error = function(e) {
+    contact <- input$character
+    history <- dialogue_context(before, contact)
+    reply_builder <- function(topics) {
+      candidate <- interview(before, contact, question, topics)
+      tail(candidate$chats[[contact]], 1L)[[1L]]$reply
+    }
+    promise <- tryCatch(dialogue_request_async(dialogue, contact, question, topic,
+      history = history, reply_builder = reply_builder), error = function(e) {
       dialogue_busy(FALSE); dialogue_note(conditionMessage(e)); NULL
     })
     if (is.null(promise)) return(FALSE)
@@ -193,7 +201,13 @@ app_server <- function(input, output, session) {
       }
       if (!run(function(state) dialogue_apply(state, result), NULL)) return(NULL)
       reset_question(result$question, topic, result$character)
-      dialogue_note(if (result$status == "scripted") "Reply added to your notebook." else paste("Reply added ·", result$status))
+      provider_name <- if (identical(Sys.getenv("FIELDNOTES_DIALOGUE_PROVIDER"), "gemini")) "Gemini" else "Provider"
+      dialogue_note(switch(result$status,
+        assisted = paste0("Reply added · ", provider_name, "-assisted reply"),
+        limited = "Reply added · scenario answer (assistance limit reached)",
+        timeout = "Reply added · scenario answer (assistance took too long)",
+        scripted = "Reply added to your notebook.",
+        "Reply added · scenario answer"))
       NULL
     }, onRejected = function(error) {
       if (!identical(dialogue$token, request_token)) return(NULL)
@@ -215,6 +229,12 @@ app_server <- function(input, output, session) {
     }
   }, ignoreInit = TRUE)
   output$dialogue_status <- renderUI(if (!is.null(dialogue_note())) p(class = "small-note", role = "status", dialogue_note()))
+  output$dialogue_help <- renderUI({
+    provider <- Sys.getenv("FIELDNOTES_DIALOGUE_PROVIDER", "scripted")
+    if (provider == "scripted") return(p(class = "small-note", "Ask naturally, or choose a topic below for a focused question."))
+    name <- if (provider == "gemini") "Gemini" else "Dialogue assistance"
+    p(class = "small-note", paste0(name, " helps with natural replies and follow-up questions. Each person answers from their own knowledge."))
+  })
   output$interview_progress <- renderUI(p(class = "interview-count", paste(length(s()$interviewed), "of 6 contacts used · Aim for 3–4, then continue when ready.")))
   menu_known <- reactiveVal(FALSE)
   observe(menu_known(s()$menu))

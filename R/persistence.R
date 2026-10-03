@@ -138,7 +138,7 @@ validate_session_shapes <- function(s) {
   }
   for (chat in s$chats) {
     if (!entries(chat)) fail()
-    for (entry in chat) if (!shape(entry, c("time", "question", "topics", "reply"), "dialogue_status") || !number(entry$time, max = s$clock) || !text(entry$question) || !strings(entry$topics) || !text(entry$reply) || (!is.null(entry$dialogue_status) && !text(entry$dialogue_status))) fail()
+    for (entry in chat) if (!shape(entry, c("time", "question", "topics", "reply"), c("dialogue_status", "authored_reply")) || !number(entry$time, max = s$clock) || !text(entry$question) || !strings(entry$topics) || !text(entry$reply) || (!is.null(entry$dialogue_status) && !text(entry$dialogue_status)) || (!is.null(entry$authored_reply) && !text(entry$authored_reply))) fail()
   }
   for (cp in s$checkpoints) {
     if (!shape(cp, c("time", "stage", "suspect", "confidence", "supporting", "against", "change", "action", "evidence")) || !number(cp$time, max = s$clock) || !all(vapply(cp[c("stage", "suspect", "confidence", "supporting", "against", "change", "action")], text, logical(1)))) fail()

@@ -1,15 +1,17 @@
 # Optional assisted interviews
 
-Scripted interviews are the default and need no credentials. Explicit topic buttons
-always use the authored engine. Free-text questions can optionally use a configured
-provider to recognize topics and choose a short connective from an approved list.
+Scripted interviews are the default and need no credentials. With Gemini or
+Ollama configured, assistance runs automatically for written questions and explicit
+topic choices. No separate creative mode or special prompt is needed.
 
-With Gemini configured, a written question triggers a provider request when the
-topic is "Use my written question". Choosing an explicit topic uses the authored
-engine without calling Gemini. "Reply added · assisted" means a valid topic and
-connective selection was accepted; it does not mean Gemini wrote the answer.
-The only wording variation is the selected character's three preset connective
-styles (plain, warm, or thoughtful). There is no free-form creative answer mode.
+Written questions first receive a structured topic selection, using up to four
+recent exchanges with the same contact to interpret follow-ups. The engine then
+constructs the canonical answer from the selected topics. A second provider request
+rephrases that answer in concise, natural first-person language. A fresh provider
+chat checks that the draft is supported, complete and in character before it is
+shown. Explicit topic choices skip classification and use the same writing/review
+steps. "Reply added · Gemini-assisted reply" means reviewed wording was accepted.
+"Reply added · scenario answer" means authored wording was used instead.
 
 Open questions such as "Tell me about the potluck" receive an authored event
 overview from Pat, Lou, or a guest. Event timing is separate from illness onset.
@@ -49,32 +51,49 @@ install the chosen Ollama model separately. Keep credentials in deployment secre
 or an ignored local `.Renviron`; never include them in saved investigations.
 
 The implementation uses ellmer's `chat_structured_async()` with an enum schema.
-Each request creates a fresh provider chat: there is no shared conversation history,
-no cross-character memory, and no cross-session chat object. Only the learner's
-question, character role/topic vocabulary, and classification instructions go to
-the provider. State, reported records, evidence, and the answer key stay in R.
+Each stage creates a fresh provider chat; there is no shared provider chat object,
+cross-character memory or cross-session memory. Classification receives the question,
+role/topic vocabulary and bounded same-contact history. History includes only question,
+displayed reply and topic IDs, truncated to 600 and 1,600 characters respectively.
+Writing also receives the canonical answer for the current question; review receives
+only that answer, the draft and contact identity. State, reported tables, other
+contacts, evidence and the answer key stay in R. Only the current character's
+requested facts, available at the current simulated time, reach the writing step.
 Learners should enter fictional investigation questions only; hosted providers
 receive those questions.
 
-The response must contain exactly `topics` and `intro`. Topics are restricted to
-the selected character's permitted domains. Intro values select authored connective
-text; arbitrary provider prose, HTML, quantities, diagnoses, causes and extra fields
-are rejected. All factual sentences and numeric values are inserted by the existing
-interview engine from reported information available at the current simulated time.
-This is structural fact validation: the provider cannot supply a changed number or
-unsupported factual sentence. Temperament is associated with character identity,
-never illness, exposure, or the hidden outcome. Unknown or malformed responses use
-the authored topic matcher. This constrained design intentionally does not produce
-unrestricted generative dialogue.
+Classification must contain exactly `topics` and `intro`, restricted to the contact's
+allowed identifiers. Writing must contain exactly `reply`; review must contain exactly
+three true booleans: `supported`, `complete`, and `in_character`. Blank, oversized,
+HTML/URL-containing and numerically changed drafts are rejected deterministically.
+The fresh review checks names, food identities, roles, uncertainty, negations,
+omissions and unsupported claims. This semantic review is probabilistic, rather than
+the earlier structural guarantee that all prose was authored. It reduces factual
+drift but cannot prove every paraphrase correct. The notebook evidence, event log,
+collected records and clock always use the canonical engine answer; accepted chat
+entries retain `authored_reply` for audit and save/resume. Apply-time validation also
+requires that the canonical answer still matches the current engine answer.
+
+The writer receives no facts beyond the current answer and cannot generate extra
+scenario facts through tools. Prompts treat all questions and history as untrusted
+data. Persona wording is based on contact role, never illness or the hidden outcome.
+Malformed classification falls back to the local matcher. Rewriting/review failures
+retain successfully recognized topics and use authored wording. Simple "tell me more"
+follow-ups can also retain the previous topic during an outage.
 
 Each Shiny session owns a `dialogue_session()` environment. Defaults permit at most
-30 provider attempts, at least two seconds between attempts, a 1,200-character
-question, and one pending request. Explicit topic and scripted replies spend no
-provider allowance. A 20-second application deadline resolves to an authored reply;
-late results are ignored. The underlying HTTP request may still finish at the
+30 assisted turns, at least two seconds between turns, a 1,200-character
+question, and one pending request. A written turn can make up to three provider
+requests (classification, writing, review); an explicit topic uses at most two.
+Thus the cap permits at most 90 requests per browser session. Scripted replies spend
+no allowance. A single 20-second application deadline covers the whole pipeline
+and resolves to an authored reply; late results are ignored. Review is not started
+if writing finishes after cancellation or the deadline. The underlying HTTP request may still finish at the
 provider and incur usage: this deadline is not transport cancellation. Provider
 failures and diagnostics are never displayed or stored in learner state.
 
+The Ask button shows "Preparing reply…" and prevents duplicate clicks while a reply
+is pending; the learner can keep reading or editing their next question.
 The UI must call `dialogue_cancel()` when replacing an investigation or disconnecting,
 and accept a result only when `dialogue_result_current()` is true and the captured
 state revision still matches. Apply `dialogue_apply()` once to that valid state.
@@ -82,7 +101,9 @@ This avoids replacing newer learner actions with a stale asynchronous snapshot.
 Request budgets should persist across resets within the same browser session.
 
 Mocked tests cover malformed and hostile output, exact authored evidence, session
-isolation, request/rate/input limits, errors, cancellation, and timeout fallback.
+isolation, bounded same-contact context, separate writer/reviewer payloads, natural
+wording, explicit-topic assistance, save/resume, request/rate/input limits, errors,
+cancellation and timeout fallback.
 On 2026-10-03, a local `gemini-3.5-flash-lite` request and a browser interview
 both recorded assisted replies with authored facts. ellmer enum arrays return R
 factors; their labels are normalized before strict validation. Keys remain in an

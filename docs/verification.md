@@ -1,5 +1,19 @@
 # Verification — 2026-10-03
 
+## Natural assisted interviews
+
+- 523 expectations pass with no failures, errors, warnings or skips. New tests
+  cover bounded same-contact history, context-dependent follow-ups, reviewed
+  wording, unchanged evidence/collections/time, save/resume, explicit-topic
+  assistance, separate writer/reviewer payloads, numeric/markup checks, rejection,
+  cancellation and timeout fallback. Overall line coverage is 86.3%.
+- Live fictional Gemini requests returned accepted, differently worded replies.
+  The local browser recognized "And who brought those?" after a menu question,
+  used an authored contributor answer when rewriting was rejected, and displayed
+  the latest answer automatically. No browser errors were reported.
+- Semantic review is probabilistic. Canonical evidence remains engine-authored;
+  this validation is not a guarantee that every generated paraphrase is correct.
+
 ## Completed software checks
 
 - `Rscript tests/run.R`: 365 passing expectations, with no failures, errors,

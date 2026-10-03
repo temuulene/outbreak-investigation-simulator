@@ -2577,10 +2577,10 @@
       "checksum": "e53b1010292d8a08a0a20df7493737b8"
     },
     "R/app_server.R": {
-      "checksum": "ef5d93f74e431ff52e1e9a2cc51c070f"
+      "checksum": "98b6a0983a40c2f907aea00f18ee4f6b"
     },
     "R/app_ui.R": {
-      "checksum": "ce3a6a8ef3b9de19f5edd03adceb6d29"
+      "checksum": "24c670ffeccb45a75531208f31470105"
     },
     "R/assessment.R": {
       "checksum": "44350996f61042885a883b0f1e2d5225"
@@ -2598,7 +2598,7 @@
       "checksum": "e2e85317dceeb2f05c2d395a9c315b83"
     },
     "R/dialogue.R": {
-      "checksum": "3d55e4bab51cb5e76f1a57e8634b2b18"
+      "checksum": "97d598016524c6eacdebb3c9cb465bd3"
     },
     "R/generate.R": {
       "checksum": "6edb778844df12d69f27c0b002ca5f9f"
@@ -2607,7 +2607,7 @@
       "checksum": "a0736f835be78194d6c27ca2443e4fef"
     },
     "R/persistence.R": {
-      "checksum": "f01a7f5e7d3016fcd09c0aaac9ba20e3"
+      "checksum": "e379d67b9016803b7a16026c70610db3"
     },
     "R/scenario.R": {
       "checksum": "2ee9057f4d3dfcaafaf1cc9db39be314"
@@ -2628,7 +2628,7 @@
       "checksum": "97cd6daff3e1453bd06f7e99ce5bfa84"
     },
     "www/guide.js": {
-      "checksum": "4cffba8be1a73e58edd313864d3f82b4"
+      "checksum": "2be5293354bcf84e731ae0d9b63e5f8d"
     },
     "www/style.css": {
       "checksum": "a864fc6bc24842b9404fd5eb4c511bba"

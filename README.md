@@ -45,8 +45,9 @@ The evidence-only export remains available separately. Resume files contain loca
 learner work and are not authenticated assessment records.
 
 Authored dialogue is the default and needs no credentials. Optional Gemini or
-local Ollama assistance maps questions to reviewed topics; all factual responses
-remain authored from the scenario. Enable the optional chat interface with
+local Ollama assistance understands same-person follow-ups and rephrases scenario
+answers in natural language, with a separate factual review and authored fallback.
+Evidence and investigation state remain engine-authored. Enable the optional chat interface with
 `FIELDNOTES_CHAT_UI=shinychat`. See [deployment](docs/deployment.md) for provider
 configuration and limits. A fresh browser connection starts a new run; nothing is
 saved on the hosting server between sessions.
