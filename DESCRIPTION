@@ -6,4 +6,4 @@ Description: A guided point-source outbreak learning simulator with optional gro
 Encoding: UTF-8
 Depends: R (>= 4.3)
 Imports: shiny, bslib, yaml, dplyr, openxlsx, jsonlite, ellmer, promises, later, shinychat
-Suggests: testthat, renv, pak, rsconnect
+Suggests: testthat, renv, pak, rsconnect, withr

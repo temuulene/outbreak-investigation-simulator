@@ -46,7 +46,11 @@ Request budgets should persist across resets within the same browser session.
 
 Mocked tests cover malformed and hostile output, exact authored evidence, session
 isolation, request/rate/input limits, errors, cancellation, and timeout fallback.
-Live Gemini and Ollama verification requires external credentials or a running local
-model and remains a separate deployment check. Verify one valid question, one
-unrelated question, a forced service failure, and two independent browser sessions
-before enabling assisted interviews for learners.
+On 2026-10-03, a local `gemini-3.5-flash-lite` request and a browser interview
+both recorded assisted replies with authored facts. ellmer enum arrays return R
+factors; their labels are normalized before strict validation. Keys remain in an
+ignored local environment file. The regression runner disables real providers and
+credentials temporarily. Live Ollama, hosted integration, an unrelated live
+question, a forced live-service failure, and two simultaneous assisted browser
+sessions remain separate deployment checks. Promotional credit deduction must be
+confirmed in the billing account; a successful API reply does not establish it.

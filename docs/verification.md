@@ -1,8 +1,8 @@
-# Verification — 2026-10-02
+# Verification — 2026-10-03
 
 ## Completed software checks
 
-- `Rscript tests/run.R`: 215 passing expectations, with no failures or warnings.
+- `Rscript tests/run.R`: 222 passing expectations, with no failures or warnings.
   Coverage includes both scenarios, bounded seed screening, time-ordered events,
   repeated collection, stratified denominators, media evidence references,
   formative assessment, facilitator overrides, and guided navigation.
@@ -14,6 +14,14 @@
   replies, separate sessions, request/input/rate limits, stale responses, errors,
   and timeout fallback. Chat-widget regression tests cover its list-shaped text
   input and reject unsupported attachment payloads.
+- Local Gemini verification on 2026-10-03 used `gemini-3.5-flash-lite`. The
+  provider returned approved menu topics, the engine recorded an `assisted`
+  interview, and the browser displayed the authored answer with a five-minute
+  game-time advance. An initial live test exposed ellmer's enum arrays being
+  represented as R factors; the adapter now validates their character labels.
+  Regression tests cover valid and empty factors plus unknown, missing, and
+  duplicate values. The test runner temporarily disables live providers and keys
+  so ordinary regression tests cannot spend configured API credits.
 - Both seed-review scripts regenerate their committed instructor reviews.
   The intermediate reference seed shows the apparent crude coleslaw association
   attenuating in chicken-salad strata. These are synthetic teaching examples;
@@ -54,9 +62,11 @@ workflow and container manifest now include those prerequisites. The original
 main release also passed its earlier workflow.
 
 Hosting destination and credentials have not been configured. The local Docker
-daemon was stopped, so a container build was not run. Public hosting, live Gemini
-or Ollama requests, live-provider outage checks, and simultaneous assisted browser
-sessions remain unverified. The scripted investigation needs no external provider.
+daemon was stopped, so a container build was not run. Public hosting, live Ollama
+requests, live-provider outage checks, and simultaneous assisted browser sessions
+remain unverified. Local Gemini success does not establish promotional credit
+deduction or the configuration of a hosted deployment. The scripted investigation
+needs no external provider.
 
 No real pilot participants have tested the app. Educational effectiveness,
 facilitator scoring reliability, and a full accessibility audit remain unverified.

@@ -27,6 +27,24 @@ testthat::test_that("scripted default and explicit topics make no provider calls
   testthat::expect_identical(result$topics, "storage")
 })
 
+testthat::test_that("ellmer enum-array factors are normalized before strict validation", {
+  request <- function(topics) {
+    transport <- function(...) promises::promise_resolve(list(topics = topics, intro = "plain"))
+    await_dialogue(dialogue_request_async(dialogue_session(), "organizer", "menu",
+      provider = "gemini", model = "test", transport = transport))
+  }
+  # ellmer 0.5 converts arrays of enums to factors, including empty arrays.
+  result <- request(factor("menu", levels = dialogue_topics("organizer")))
+  testthat::expect_identical(result$status, "assisted")
+  testthat::expect_identical(result$topics, "menu")
+  empty <- request(factor(character(), levels = dialogue_topics("organizer")))
+  testthat::expect_identical(empty$status, "assisted")
+  testthat::expect_identical(empty$topics, character())
+  testthat::expect_identical(request(factor("diagnosis"))$status, "fallback")
+  testthat::expect_identical(request(factor(NA_character_, levels = "menu"))$status, "fallback")
+  testthat::expect_identical(request(factor(c("menu", "menu")))$status, "fallback")
+})
+
 testthat::test_that("provider result only selects engine facts and does not receive state", {
   session <- dialogue_session()
   captured <- NULL

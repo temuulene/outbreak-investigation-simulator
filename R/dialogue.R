@@ -91,6 +91,8 @@ dialogue_request_async <- function(session, character, question, selected_topic 
     tryCatch({
       request <- transport(question, character, provider, model)
       promises::then(promises::as.promise(request), onFulfilled = function(value) {
+        # ellmer converts arrays of enum values to factors; validate their labels.
+        if (is.list(value) && is.factor(value$topics)) value$topics <- as.character(value$topics)
         if (!dialogue_validate(value, character)) return(finish(fallback("fallback")))
         result <- fallback("assisted")
         result$topics <- value$topics; result$intro <- value$intro
