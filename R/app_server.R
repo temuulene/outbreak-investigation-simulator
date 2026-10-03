@@ -154,6 +154,14 @@ app_server <- function(input, output, session) {
   chat_notice <- function(text) {
     if (identical(Sys.getenv("FIELDNOTES_CHAT_UI"), "shinychat")) shinychat::chat_append("conversation", tags$p(text), session = session)
   }
+  reset_question <- function(question, topic, character) {
+    if (!identical(isolate(input$character), character)) return(invisible(NULL))
+    if (identical(isolate(input$topic), topic)) updateSelectInput(session, "topic", selected = "auto")
+    if (!identical(Sys.getenv("FIELDNOTES_CHAT_UI"), "shinychat") &&
+        identical(isolate(input$question), question)) {
+      updateTextAreaInput(session, "question", value = "")
+    }
+  }
   ask_question <- function(question) {
     if (dialogue_busy()) {dialogue_note("Please wait for the current reply."); return(FALSE)}
     if (!is.character(question) || length(question) != 1L || is.na(question) || nchar(question) > 1200L) {showNotification("Enter a question of up to 1200 characters.", type = "warning"); return(FALSE)}
@@ -161,7 +169,9 @@ app_server <- function(input, output, session) {
     topic <- input$topic
     if (is.null(topic) || !topic %in% c("auto", dialogue_topics(input$character))) topic <- "auto"
     if (Sys.getenv("FIELDNOTES_DIALOGUE_PROVIDER", "scripted") == "scripted") {
-      return(run(function(state) interview(state, input$character, question, topic), "Reply added to your notebook."))
+      ok <- run(function(state) interview(state, input$character, question, topic), "Reply added to your notebook.")
+      if (ok) reset_question(question, topic, input$character)
+      return(ok)
     }
     before <- isolate(s())
     dialogue_busy(TRUE)
@@ -179,7 +189,8 @@ app_server <- function(input, output, session) {
         chat_notice("Your investigation changed while the reply was preparing. Ask again to use the current evidence.")
         return(NULL)
       }
-      run(function(state) dialogue_apply(state, result), NULL)
+      if (!run(function(state) dialogue_apply(state, result), NULL)) return(NULL)
+      reset_question(result$question, topic, result$character)
       dialogue_note(if (result$status == "scripted") "Reply added to your notebook." else paste("Reply added ·", result$status))
       NULL
     }, onRejected = function(error) {

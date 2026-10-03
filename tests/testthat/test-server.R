@@ -197,3 +197,98 @@ test_that("widget text submission follows the same interview boundary", {
     expect_identical(s(), before)
   })
 })
+
+test_that("the placeholder question works through both conversation interfaces", {
+  withr::local_dir(root)
+  library(shiny)
+  for (interface in c("scripted", "shinychat")) {
+    withr::with_envvar(c(FIELDNOTES_CHAT_UI = interface), shiny::testServer(app_server, {
+      session$setInputs(character = "organizer", topic = "auto")
+      if (interface == "shinychat") {
+        session$setInputs(conversation_user_input = list("Tell me about the potluck"))
+      } else {
+        session$setInputs(question = "Tell me about the potluck", ask = 1)
+      }
+      expect_identical(s()$chats$organizer[[1]]$topics, "event")
+      expect_match(s()$chats$organizer[[1]]$reply, "Saturday")
+    }))
+  }
+})
+
+test_that("successful questions reset the topic and text while rejected submissions keep them", {
+  withr::local_dir(root)
+  library(shiny)
+  shiny::testServer(app_server, {
+    updates <- list()
+    session$sendInputMessage <- function(inputId, message) updates[[inputId]] <<- message
+    session$setInputs(character = "organizer", topic = "auto")
+    updates <- list()
+    session$setInputs(topic = "menu", question = "Were there walk-ins?", ask = 1)
+    expect_true(s()$menu && s()$walk_ins)
+    expect_identical(updates$topic$value, "auto")
+    expect_identical(updates$question$value, "")
+    updates <- list()
+    session$setInputs(question = strrep("x", 1201), ask = 2)
+    expect_length(updates, 0)
+  })
+})
+
+test_that("assisted submissions reset controls only after an authored reply is applied", {
+  withr::local_dir(root)
+  withr::local_envvar(FIELDNOTES_DIALOGUE_PROVIDER = "gemini")
+  library(shiny)
+  shiny::testServer(app_server, {
+    updates <- list()
+    session$sendInputMessage <- function(inputId, message) updates[[inputId]] <<- message
+    session$setInputs(character = "organizer", topic = "auto")
+    updates <- list()
+    # An explicit topic uses the asynchronous path without a service request.
+    session$setInputs(topic = "menu", question = "Were there walk-ins?", ask = 1)
+    deadline <- Sys.time() + 2
+    while (isolate(dialogue_busy()) && Sys.time() < deadline) later::run_now(0.01)
+    expect_false(dialogue_busy())
+    expect_true(s()$menu && s()$walk_ins)
+    expect_identical(updates$topic$value, "auto")
+    expect_identical(updates$question$value, "")
+  })
+})
+
+test_that("a delayed reply preserves a new draft or a different contact's controls", {
+  withr::local_dir(root)
+  withr::local_envvar(FIELDNOTES_DIALOGUE_PROVIDER = "gemini")
+  library(shiny)
+  release <- NULL
+  request_environment <- environment(app_server)
+  original_request <- get("dialogue_request_async", envir = request_environment)
+  withr::defer(assign("dialogue_request_async", original_request, envir = request_environment))
+  assign("dialogue_request_async", function(session, character, question, ...) {
+    # Match the real boundary, which validates and forces inputs before waiting.
+    force(character)
+    force(question)
+    session$token <- session$token + 1L
+    promises::promise(function(resolve, reject) {
+      release <<- function() resolve(list(topics = "menu", intro = "plain", status = "assisted",
+        token = session$token, character = character, question = question))
+    })
+  }, envir = request_environment)
+  for (switch_contact in c(FALSE, TRUE)) shiny::testServer(app_server, {
+    updates <- list()
+    session$sendInputMessage <- function(inputId, message) updates[[inputId]] <<- message
+    session$setInputs(character = "organizer", topic = "auto")
+    session$setInputs(topic = "menu", question = "What did you serve?", ask = 1)
+    expect_true(dialogue_busy())
+    if (switch_contact) {
+      session$setInputs(character = "cook")
+    } else {
+      session$setInputs(topic = "guest_list", question = "Who came?")
+    }
+    updates <- list()
+    release()
+    deadline <- Sys.time() + 2
+    while (isolate(dialogue_busy()) && Sys.time() < deadline) later::run_now(0.01)
+    expect_true(s()$menu)
+    expect_false(dialogue_busy())
+    expect_null(updates$question)
+    expect_null(updates$topic)
+  })
+})

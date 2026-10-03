@@ -2,10 +2,21 @@
 
 ## Completed software checks
 
-- `Rscript tests/run.R`: 222 passing expectations, with no failures or warnings.
+- `Rscript tests/run.R`: 365 passing expectations, with no failures, errors,
+  warnings, or skips after the question-matching regression fixes.
   Coverage includes both scenarios, bounded seed screening, time-ordered events,
   repeated collection, stratified denominators, media evidence references,
   formative assessment, facilitator overrides, and guided navigation.
+- The reported "Tell me about the potluck" failure was reproduced with failing
+  tests before changing production code. Added checks cover event overviews in
+  both scenarios and both conversation interfaces, everyday question phrasings,
+  incidental substring matches, topic selections that retain written questions,
+  provider errors and omitted topics, useful clarifications, and control resets.
+  Delayed replies preserve a new draft, a changed topic, and another contact's
+  controls.
+  Overall line coverage is 85.4%; topic classification, topic combination, and
+  clarification helpers have 100% coverage. Interview coverage is 82.0%, the
+  asynchronous request function is 92.9%, and the server is 82.6%.
 - Save/resume tests reconstruct an identical investigation, preserve frozen
   snapshots and future task results, and reject malformed types, references,
   chronology, contact histories, and oversized files before replacing a session.
@@ -41,6 +52,11 @@
 
 ## Browser checks
 
+- A local Chrome check of the exact question "Tell me about the potluck" showed
+  Pat's authored Saturday 18:00 event overview, an assisted status, and a
+  five-minute advance. The question box cleared and the topic remained on
+  "Use my written question". This checks the local revision; the public pilot
+  has not been redeployed with these question-matching changes.
 - The default experience retains one main activity, three short reflection
   prompts, optional tools, and a single opening action. Intro interviews and the
   intermediate challenge were exercised in the browser.

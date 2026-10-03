@@ -7,23 +7,66 @@ available_characters <- function(s) {
 }
 
 classify_topics <- function(question) {
-  patterns <- c(menu = "menu|food|eat|ate|drink|served", guest_list = "list|rsvp|attend|contact|people|guest",
-    walk_ins = "walk.?in|missing|else|without|complete", leftovers = "leftover|fridge|preserv|discard|keep",
-    preparation = "prepar|made|make|cook|walk me|process|recipe", storage = "stor|cool|overnight|temperature",
-    symptoms = "symptom|sick|ill|feel|diarr|fever|vomit|cramp", onset = "when|onset|start|time",
-    demographics = "age|old|sex", health_care_visits = "doctor|hospital|care|clinic")
-  names(patterns)[vapply(patterns, function(pattern) grepl(pattern, question, ignore.case = TRUE), logical(1))]
+  patterns <- c(
+    event = paste0(
+      "\\b(?:tell me about|describe)\\s+(?:(?:the|this|that|saturday['’]s)\\s+)?",
+      "(?:community\\s+)?(?:potluck|event|meal|gathering)\\b|",
+      "\\bwhat happened(?:\\s+at (?:the\\s+)?(?:potluck|event|meal|gathering))?\\s*\\??$|",
+      "\\b(?:when(?: and where)?|where)\\s+(?:was|did)\\s+(?:the\\s+)?(?:potluck|event|meal|gathering)\\b|",
+      "\\b(?:overview|background)\\s+(?:of|on|about)\\s+(?:the\\s+)?(?:potluck|event|meal|gathering)\\b"
+    ),
+    menu = "\\b(?:menus?|foods?|eat(?:en|ing)?|ate|drinks?|beverages?|serv(?:e|ed|ing)|dishes|dinner|lunch|breakfast)\\b|\\bwhat did you bring\\b",
+    guest_list = paste0(
+      "\\b(?:rsvp|attend(?:ed|ing|ance|ees?)?|contacts?)\\b|\\b(?:guest|rsvp|attendee|contact) (?:list|names)\\b|",
+      "\\bwho (?:came|was there|were there)\\b|\\blist (?:of )?(?:guests?|people|attendees?|names)\\b|^\\s*list\\s*\\??$"
+    ),
+    walk_ins = paste0(
+      "\\bwalk[ -]?ins?\\b|\\b(?:missing|unlisted|uninvited)\\s+(?:guests?|people|attendees?|names)\\b|",
+      "\\b(?:without|didn['’]t|did not) (?:an?\\s+)?rsvp\\b|\\b(?:not on|off|missing from|left off) (?:the\\s+)?(?:guest\\s+|rsvp\\s+)?list\\b|",
+      "\\b(?:anyone|who) else (?:came|attended|was there)\\b|\\b(?:is|was) (?:the )?(?:guest )?list complete\\b"
+    ),
+    leftovers = "\\bleft[ -]?overs?\\b|\\bleft over\\b|\\b(?:fridge|preserv(?:e|ed|ing|ation)|discard(?:ed|ing)?|throw(?:n|ing)? away)\\b",
+    preparation = "\\b(?:prepar(?:e|ed|ing|ation)|made|make|making|cook(?:ed|ing)?|process|recipes?|handl(?:e|ed|ing))\\b|\\bwalk me through\\b",
+    storage = "\\b(?:stor(?:e|ed|ing|age)|cool(?:ed|ing)?|cold|overnight|temperatures?|refrigerat(?:e|ed|ing|ion))\\b|\\bhow (?:was|were) .{0,40}\\bkept\\b",
+    symptoms = "\\b(?:symptoms?|sick|ill(?:ness)?|unwell|feel(?:ing)?|felt|diarrh(?:ea|oea)|fevers?|vomit(?:ed|ing)?|cramps?|nausea|nauseous)\\b|\\b(?:throw(?:ing)?|threw) up\\b|\\bbloody stools?\\b",
+    onset = "\\b(?:when|onset|start(?:ed|ing)?|times?|began|begin)\\b|\\bhow long after\\b",
+    demographics = "\\b(?:ages?|old|sex|gender)\\b",
+    health_care_visits = "\\b(?:doctors?|hospitals?|care|clinics?|medical|treatment|treated)\\b"
+  )
+  topics <- names(patterns)[vapply(patterns, function(pattern) {
+    grepl(pattern, question, ignore.case = TRUE, perl = TRUE)
+  }, logical(1))]
+  # Event timing is distinct from the guest's illness onset.
+  if ("event" %in% topics && !"symptoms" %in% topics) topics <- setdiff(topics, "onset")
+  topics
+}
+
+interview_topics <- function(question, character, selected_topic = "auto") {
+  intersect(unique(c(classify_topics(question), setdiff(selected_topic, "auto"))),
+    dialogue_topics(character))
+}
+
+interview_clarification <- function(character) {
+  if (character == "organizer") {
+    return('I can tell you about the event, menu, guest list, walk-ins, leftovers, or reports of illness. For example, "What was on the menu?"')
+  }
+  if (character == "cook") {
+    return('I can tell you what I brought and how I prepared or stored it. For example, "How did you prepare the food?"')
+  }
+  'I can tell you what I ate, my symptoms, when they started, my age and sex, or any health care visits. For example, "How have you been feeling?"'
 }
 
 interview <- function(s, character, question, selected_topic = "auto") {
   if (!character %in% unname(available_characters(s))) stop("Choose an available interview contact.")
   if (!nzchar(trimws(question)) && identical(selected_topic, "auto")) stop("Enter a question or choose a topic.")
   if (!character %in% s$interviewed && length(s$interviewed) >= s$sc$interviews$max) stop("The six-interview limit has been reached.")
-  topics <- if (identical(selected_topic, "auto")) classify_topics(question) else selected_topic
-  allowed <- if (character == "organizer") c("menu", "guest_list", "walk_ins", "leftovers", "symptoms") else if (character == "cook") c("preparation", "storage", "menu") else c("menu", "symptoms", "onset", "demographics", "health_care_visits")
-  topics <- intersect(topics, allowed)
+  topics <- interview_topics(question, character, selected_topic)
   replies <- character()
   if (character == "organizer") {
+    if ("event" %in% topics) replies <- c(replies, paste(
+      "We held the community potluck at the hall on Saturday, with the meal at 18:00.",
+      "Several guests have since called about stomach illness.",
+      "I can tell you about the menu, who attended, and the leftovers."))
     if ("menu" %in% topics) {
       s$menu <- TRUE
       replies <- c(replies, paste("We served", paste(food_labels(s$sc)[s$sc$menu_order], collapse = ", "), ". Lou brought the chicken salad."))
@@ -36,6 +79,9 @@ interview <- function(s, character, question, selected_topic = "auto") {
     if ("leftovers" %in% topics) replies <- c(replies, "The committee plans to clear the fridge Tuesday at 09:00. Use the preserve-leftovers task if you need samples kept.")
     if ("symptoms" %in% topics) replies <- c(replies, "Several guests have called about stomach illness after the potluck. Please ask them directly about their symptoms.")
   } else if (character == "cook") {
+    if ("event" %in% topics) replies <- c(replies, paste(
+      "I brought the chicken salad sandwiches to the hall for Saturday's 18:00 potluck.",
+      "I can tell you how I prepared and stored them."))
     if (any(c("preparation", "storage") %in% topics)) {
       s$process_known <- TRUE
       replies <- c(replies, paste("I cooked the chicken, then left it cooling in a deep stock pot overnight. I mixed the salad the next day and brought it to the hall."))
@@ -45,6 +91,9 @@ interview <- function(s, character, question, selected_topic = "auto") {
     id <- as.integer(sub("guest_", "", character))
     records <- reported_as_of(s)
     r <- records[records$id == id, ]
+    if ("event" %in% topics) replies <- c(replies, paste(
+      "I attended the community potluck at the hall on Saturday. The meal was at 18:00.",
+      "You can ask me what I ate and how I've felt since then."))
     foods <- if ("menu" %in% topics) names(food_labels(s$sc)) else character()
     s <- collect_records(s, id, domain_fields(setdiff(topics, "menu"), foods))
     if ("menu" %in% topics) {
@@ -60,7 +109,7 @@ interview <- function(s, character, question, selected_topic = "auto") {
     if ("demographics" %in% topics) replies <- c(replies, paste("My age is", r$age, "and my recorded sex is", r$sex, "."))
     if ("health_care_visits" %in% topics) replies <- c(replies, if (r$health_care_visits) "I visited a health care service." else "I haven't visited a health care service.")
   }
-  if (!length(replies)) replies <- "I don't know or don't remember. Try the topic menu to ask about something I can speak to."
+  if (!length(replies)) replies <- interview_clarification(character)
   s$interviewed <- unique(c(s$interviewed, character))
   # Charge for newly covered topics; rephrasing doesn't change the record or cost time.
   previous <- unique(unlist(lapply(s$chats[[character]], `[[`, "topics")))

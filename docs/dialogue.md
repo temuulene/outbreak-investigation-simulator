@@ -4,6 +4,23 @@ Scripted interviews are the default and need no credentials. Explicit topic butt
 always use the authored engine. Free-text questions can optionally use a configured
 provider to recognize topics and choose a short connective from an approved list.
 
+Open questions such as "Tell me about the potluck" receive an authored event
+overview from Pat, Lou, or a guest. Event timing is separate from illness onset.
+The overview does not unlock the complete menu, walk-in contacts, preparation
+findings, or individual health histories; ask focused follow-ups for those.
+The scripted matcher recognizes common phrasings and whole words, including
+"Who came?", "What did you serve?", "left over", and "throw up". It avoids
+incidental matches such as "will" as illness or "a list of dishes" as a guest list.
+Unmatched questions receive a character-specific example of a useful question.
+
+A selected topic supplements the written question. Both scripted and assisted
+paths retain locally recognized topics, including when a valid provider response
+omits them. Successful replies reset the topic to the written-question option and
+clear the submitted text; rejected submissions keep the draft. A draft or topic
+edited while a reply is pending, and another contact's controls, are preserved.
+Topic recognition is bounded, so the topic menu remains available for wording
+the matcher misses.
+
 Set `FIELDNOTES_DIALOGUE_PROVIDER` to `gemini` or `ollama` and set
 `FIELDNOTES_DIALOGUE_MODEL` to an explicitly chosen, available model. Gemini uses
 ellmer's `GOOGLE_API_KEY` environment variable. Ollama uses `OLLAMA_BASE_URL`

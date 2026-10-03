@@ -28,16 +28,16 @@ testthat::test_that("scripted default and explicit topics make no provider calls
 })
 
 testthat::test_that("ellmer enum-array factors are normalized before strict validation", {
-  request <- function(topics) {
+  request <- function(topics, question = "menu") {
     transport <- function(...) promises::promise_resolve(list(topics = topics, intro = "plain"))
-    await_dialogue(dialogue_request_async(dialogue_session(), "organizer", "menu",
+    await_dialogue(dialogue_request_async(dialogue_session(), "organizer", question,
       provider = "gemini", model = "test", transport = transport))
   }
   # ellmer 0.5 converts arrays of enums to factors, including empty arrays.
   result <- request(factor("menu", levels = dialogue_topics("organizer")))
   testthat::expect_identical(result$status, "assisted")
   testthat::expect_identical(result$topics, "menu")
-  empty <- request(factor(character(), levels = dialogue_topics("organizer")))
+  empty <- request(factor(character(), levels = dialogue_topics("organizer")), "Tell me a joke")
   testthat::expect_identical(empty$status, "assisted")
   testthat::expect_identical(empty$topics, character())
   testthat::expect_identical(request(factor("diagnosis"))$status, "fallback")
@@ -127,4 +127,27 @@ testthat::test_that("chat widget input accepts text only", {
   testthat::expect_identical(dialogue_input_text(list("menu")), "menu")
   testthat::expect_null(dialogue_input_text(list("menu", list(type = "image"))))
   testthat::expect_null(dialogue_input_text(list(text = list("menu"))))
+})
+
+testthat::test_that("open questions remain useful through scripted and failed assisted requests", {
+  transports <- list(function(...) stop("Unavailable"),
+    function(...) promises::promise_resolve(list(topics = character(), intro = "plain")))
+  for (provider in c("scripted", "gemini")) {
+    for (transport in transports) {
+      result <- await_dialogue(dialogue_request_async(dialogue_session(), "organizer",
+        "Tell me about the potluck", provider = provider, transport = transport))
+      testthat::expect_identical(result$topics, "event")
+      after <- dialogue_apply(new_state(scenario()), result)
+      testthat::expect_match(after$chats$organizer[[1]]$reply, "Saturday")
+      testthat::expect_false(after$menu || after$walk_ins || after$process_known)
+    }
+  }
+})
+
+testthat::test_that("explicit assisted topics preserve the written question without calling a provider", {
+  result <- await_dialogue(dialogue_request_async(dialogue_session(), "organizer",
+    "Were there walk-ins?", "menu", provider = "gemini", transport = function(...) stop("Should never run")))
+  testthat::expect_setequal(result$topics, c("menu", "walk_ins"))
+  after <- dialogue_apply(new_state(scenario()), result)
+  testthat::expect_true(after$menu && after$walk_ins)
 })
