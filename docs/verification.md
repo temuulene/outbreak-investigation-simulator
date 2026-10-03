@@ -45,10 +45,13 @@
 
 ## Release and external checks
 
-The initial GitHub Actions run passed on the original main release. The expanded
-release is checked by a workflow that restores the lockfile, runs the full suite,
-regenerates both seed reviews, and rejects documentation drift. Record the release
-run and commit after it completes.
+The expanded implementation at `ba1961a` passed
+[GitHub Actions run 37103565970](https://github.com/temuulene/outbreak-investigation-simulator/actions/runs/37103565970).
+The Ubuntu runner installed system prerequisites, restored the lockfile, passed
+the full suite, regenerated both seed reviews, and passed the documentation drift
+check. The first expanded run exposed missing Linux development headers; the
+workflow and container manifest now include those prerequisites. The original
+main release also passed its earlier workflow.
 
 Hosting destination and credentials have not been configured. The local Docker
 daemon was stopped, so a container build was not run. Public hosting, live Gemini

@@ -1,4 +1,4 @@
-# Remaining simulator features
+# Simulator implementation status
 
 Maintain the guided interface and the separation of simulated truth, reported facts,
 and collected evidence. Preserve existing learner decisions and transparent uncertainty.
@@ -11,9 +11,17 @@ and collected evidence. Preserve existing learner decisions and transparent unce
 - [x] Transparent formative reasoning feedback with evidence references and instructor review.
 - [x] Safe session save/resume, repeat collection, and generalised scenario configuration.
 - [x] Deployment packaging, provider configuration, secret exclusions, and local launch checks.
-- [ ] Full regression tests, browser checks, documentation, dependency lock, and GitHub CI.
-- [ ] Actual public deployment and live-provider verification if destination and
-      credentials are available. Otherwise record the exact external prerequisites.
+- [x] Full regression tests, browser checks, documentation, dependency lock, and GitHub CI.
+- [x] Record external prerequisites and pilot observation workflow.
+
+## External release checks
+
+- [ ] Deploy to a configured host and verify the URL from another client.
+- [ ] Build and run the container with a running Docker daemon.
+- [ ] Verify live-provider success, outage fallback, and independent sessions with
+      configured Gemini credentials or a local Ollama model.
+- [ ] Manually confirm browser upload/resume; server import/restore tests pass.
+- [ ] Observe real pilot participants and record usability and learning findings.
 
 Local software verification is recorded in [verification.md](verification.md).
 Public deployment requires a hosting destination and its account credentials;
