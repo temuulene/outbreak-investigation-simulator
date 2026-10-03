@@ -7,6 +7,10 @@ Dependencies restore to the ignored `artifacts/library`; no global R library is
 changed. `renv.lock` pins app, test, and deployment dependencies. Run tests with
 that library on `.libPaths()`. The launcher defaults to `127.0.0.1:3874`.
 
+On Debian/Ubuntu, source package installation requires development headers for
+curl, OpenSSL, XML, ICU, and zlib. The verification workflow installs
+`libcurl4-openssl-dev libssl-dev libxml2-dev libicu-dev zlib1g-dev` before restore.
+
 ## Optional dialogue and chat
 
 Set environment variables before starting R (or in private hosting secrets):
