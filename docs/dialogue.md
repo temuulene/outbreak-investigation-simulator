@@ -13,6 +13,14 @@ The scripted matcher recognizes common phrasings and whole words, including
 incidental matches such as "will" as illness or "a list of dishes" as a guest list.
 Unmatched questions receive a character-specific example of a useful question.
 
+Questions such as "Who brought which food?", "Who made the chicken salad?", and
+"Who is Lou?" use a separate contributor topic. Pat explains that Lou brought
+the chicken salad sandwiches and that the other contributors are not recorded;
+the dialogue does not invent a complete contributor list. A menu-only answer
+lists the dishes without singling out Lou. Contributor questions do not collect
+guest food histories or reveal preparation methods unless those are also asked
+for. The topic menu includes "Who brought the food" for each contact.
+
 A selected topic supplements the written question. Both scripted and assisted
 paths retain locally recognized topics, including when a valid provider response
 omits them. Successful replies reset the topic to the written-question option and

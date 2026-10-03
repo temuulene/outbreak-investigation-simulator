@@ -15,7 +15,16 @@ classify_topics <- function(question) {
       "\\b(?:when(?: and where)?|where)\\s+(?:was|did)\\s+(?:the\\s+)?(?:potluck|event|meal|gathering)\\b|",
       "\\b(?:overview|background)\\s+(?:of|on|about)\\s+(?:the\\s+)?(?:potluck|event|meal|gathering)\\b"
     ),
-    menu = "\\b(?:menus?|foods?|eat(?:en|ing)?|ate|drinks?|beverages?|serv(?:e|ed|ing)|dishes|dinner|lunch|breakfast)\\b|\\bwhat did you bring\\b",
+    menu = "\\b(?:menus?|foods?|eat(?:en|ing)?|ate|drinks?|beverages?|serv(?:e|ed|ing)|dishes|dinner|lunch|breakfast)\\b",
+    food_sources = paste0(
+      "\\b(?:who|which (?:guests?|people|attendees?))\\b[^?!.]{0,60}\\b(?:brought|made|prepared|cooked|provided|supplied|contributed)\\b",
+      "[^?!.]{0,50}\\b(?:foods?|dish(?:es)?|meals?|drinks?|beverages?|cake|punch|rice|coleslaw|chicken|salad|sandwich(?:es)?)\\b|",
+      "\\bwho(?: else)? (?:brought|made|provided|supplied) what\\b|",
+      "\\bwho(?: else)? (?:brought|made|prepared|cooked|provided|supplied) (?:it|this|that|them)\\s*[?.!]?\\s*$|",
+      "\\bfood (?:contributors?|sources?)\\b|\\bwho is lou\\b|",
+      "\\bwhy\\b[^?!.]{0,20}\\blou\\b[^?!.]{0,30}\\bmention(?:ed|ing)?\\b|",
+      "\\bwhat did (?:lou|you) bring\\b"
+    ),
     guest_list = paste0(
       "\\b(?:rsvp|attend(?:ed|ing|ance|ees?)?|contacts?)\\b|\\b(?:guest|rsvp|attendee|contact) (?:list|names)\\b|",
       "\\bwho (?:came|was there|were there)\\b|\\blist (?:of )?(?:guests?|people|attendees?|names)\\b|^\\s*list\\s*\\??$"
@@ -38,6 +47,13 @@ classify_topics <- function(question) {
   }, logical(1))]
   # Event timing is distinct from the guest's illness onset.
   if ("event" %in% topics && !"symptoms" %in% topics) topics <- setdiff(topics, "onset")
+  if ("food_sources" %in% topics) {
+    # Asking who made food does not ask what guests ate or how it was prepared.
+    if (!grepl("\\bmenus?\\b|\\b(?:eat(?:en|ing)?|ate)\\b|\\bwhat\\b[^?!.]{0,40}\\bserv(?:e|ed|ing)\\b", question,
+        ignore.case = TRUE, perl = TRUE)) topics <- setdiff(topics, "menu")
+    if (!grepl("\\bhow\\b[^?!.]{0,70}\\b(?:prepar(?:e|ed|ing|ation)|made|make|cooked|cook|handled)\\b", question,
+        ignore.case = TRUE, perl = TRUE)) topics <- setdiff(topics, "preparation")
+  }
   topics
 }
 
@@ -48,7 +64,7 @@ interview_topics <- function(question, character, selected_topic = "auto") {
 
 interview_clarification <- function(character) {
   if (character == "organizer") {
-    return('I can tell you about the event, menu, guest list, walk-ins, leftovers, or reports of illness. For example, "What was on the menu?"')
+    return('I can tell you about the event, menu, who brought the food, guest list, walk-ins, leftovers, or reports of illness. For example, "What was on the menu?"')
   }
   if (character == "cook") {
     return('I can tell you what I brought and how I prepared or stored it. For example, "How did you prepare the food?"')
@@ -69,7 +85,13 @@ interview <- function(s, character, question, selected_topic = "auto") {
       "I can tell you about the menu, who attended, and the leftovers."))
     if ("menu" %in% topics) {
       s$menu <- TRUE
-      replies <- c(replies, paste("We served", paste(food_labels(s$sc)[s$sc$menu_order], collapse = ", "), ". Lou brought the chicken salad."))
+      replies <- c(replies, paste0("We served ", paste(food_labels(s$sc)[s$sc$menu_order], collapse = ", "), "."))
+    }
+    if ("food_sources" %in% topics) {
+      other_dishes <- food_labels(s$sc)[setdiff(s$sc$menu_order, "chicken_salad")]
+      replies <- c(replies, paste0("Lou is the cook who brought the chicken salad sandwiches. ",
+        "I don't have a record of who brought these other dishes: ", paste(other_dishes, collapse = ", "),
+        ". You can ask Lou directly about their own dish."))
     }
     if ("guest_list" %in% topics) replies <- c(replies, "I can send the RSVP list. Request it through the task desk; it doesn't include everyone who walked in.")
     if ("walk_ins" %in% topics) {
@@ -87,6 +109,7 @@ interview <- function(s, character, question, selected_topic = "auto") {
       replies <- c(replies, paste("I cooked the chicken, then left it cooling in a deep stock pot overnight. I mixed the salad the next day and brought it to the hall."))
     }
     if ("menu" %in% topics) replies <- c(replies, "I brought the chicken salad sandwiches. I don't know what everyone ate.")
+    if ("food_sources" %in% topics) replies <- c(replies, "I brought the chicken salad sandwiches. I don't know who brought the other dishes.")
   } else {
     id <- as.integer(sub("guest_", "", character))
     records <- reported_as_of(s)
@@ -95,7 +118,9 @@ interview <- function(s, character, question, selected_topic = "auto") {
       "I attended the community potluck at the hall on Saturday. The meal was at 18:00.",
       "You can ask me what I ate and how I've felt since then."))
     foods <- if ("menu" %in% topics) names(food_labels(s$sc)) else character()
-    s <- collect_records(s, id, domain_fields(setdiff(topics, "menu"), foods))
+    fields <- domain_fields(setdiff(topics, "menu"), foods)
+    if (length(fields)) s <- collect_records(s, id, fields)
+    if ("food_sources" %in% topics) replies <- c(replies, "I don't know who brought the food. You could ask Pat, the organizer, about the contributors.")
     if ("menu" %in% topics) {
       # Individual recall does not substitute for obtaining the complete event menu.
       eaten <- names(food_labels(s$sc))[vapply(names(food_labels(s$sc)), function(f) isTRUE(r[[f]]), logical(1))]

@@ -151,3 +151,34 @@ testthat::test_that("explicit assisted topics preserve the written question with
   after <- dialogue_apply(new_state(scenario()), result)
   testthat::expect_true(after$menu && after$walk_ins)
 })
+
+testthat::test_that("contributor questions retain authored answers across dialogue modes", {
+  for (provider in c("scripted", "gemini")) {
+    for (transport in list(function(...) stop("Unavailable"),
+        function(...) promises::promise_resolve(list(topics = character(), intro = "plain")),
+        function(...) promises::promise_resolve(list(topics = c("menu", "preparation"), intro = "plain")))) {
+      result <- await_dialogue(dialogue_request_async(dialogue_session(), "organizer",
+        "Who else brought which food?", provider = provider, transport = transport))
+      testthat::expect_identical(result$topics, "food_sources")
+      after <- dialogue_apply(new_state(scenario()), result)
+      testthat::expect_match(after$chats$organizer[[1]]$reply, "don't have a record", fixed = TRUE)
+      testthat::expect_false(after$menu || after$process_known)
+    }
+  }
+})
+
+testthat::test_that("assisted contributor questions reveal methods only when explicitly requested", {
+  transport <- function(...) promises::promise_resolve(list(topics = c("menu", "preparation"), intro = "plain"))
+  before <- new_state(scenario())
+  result <- await_dialogue(dialogue_request_async(dialogue_session(), "cook",
+    "Who made the chicken salad?", provider = "gemini", transport = transport))
+  testthat::expect_identical(result$topics, "food_sources")
+  testthat::expect_false(dialogue_apply(before, result)$process_known)
+  mixed <- await_dialogue(dialogue_request_async(dialogue_session(), "cook",
+    "Who brought the food, and how was it prepared?", provider = "gemini", transport = transport))
+  testthat::expect_setequal(mixed$topics, c("food_sources", "preparation"))
+  testthat::expect_true(dialogue_apply(before, mixed)$process_known)
+  selected <- await_dialogue(dialogue_request_async(dialogue_session(), "cook",
+    "Who made the chicken salad?", "preparation", provider = "gemini", transport = function(...) stop("Should never run")))
+  testthat::expect_true(dialogue_apply(before, selected)$process_known)
+})

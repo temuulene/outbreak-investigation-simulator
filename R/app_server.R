@@ -149,7 +149,9 @@ app_server <- function(input, output, session) {
   })
   observeEvent(input$character, {
     topics <- dialogue_topics(input$character)
-    updateSelectInput(session, "topic", choices = c("Use my written question" = "auto", setNames(topics, gsub("_", " ", topics))), selected = "auto")
+    labels <- gsub("_", " ", topics)
+    labels[topics == "food_sources"] <- "Who brought the food"
+    updateSelectInput(session, "topic", choices = c("Use my written question" = "auto", setNames(topics, labels)), selected = "auto")
   })
   chat_notice <- function(text) {
     if (identical(Sys.getenv("FIELDNOTES_CHAT_UI"), "shinychat")) shinychat::chat_append("conversation", tags$p(text), session = session)
