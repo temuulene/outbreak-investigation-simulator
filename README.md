@@ -33,7 +33,11 @@ For an existing R installation with dependencies already available,
 - Preservation deadline, queued results, late reports, and contemporaneous actions.
 - Structured case definitions with live counts and revision reasons.
 - Questionnaire coverage preview; unasked fields remain missing.
-- Frozen CSV and Excel exports, starter R script, RR/attack-rate checks, and curve.
+- Frozen CSV and Excel exports, starter R script, and attack-rate/RR checks that
+  name common slips and accept sound rounding.
+- Case description (symptoms, incubation, age, sex) and an epidemic curve with a
+  selectable interval.
+- Stratified comparisons with crude and Mantel-Haenszel adjusted relative risks.
 - Three reasoning checkpoints, five-domain review, optional truth reveal, and retry.
 - JSON session export containing learner-visible evidence, not hidden guest truth.
 
@@ -64,8 +68,10 @@ Tests cover data isolation, classification, missingness, task timing, preservati
 contact caps, action conditions, frozen evidence, workbook output, pilot teaching
 signal, and the complete Shiny server workflow. See [the pilot guide](docs/pilot-guide.md)
 for facilitation and limitations and [scenario review](docs/scenario-review.md) for
-complete-follow-up reference results and the confounding comparison. This is a training prototype, not a
-validated assessment instrument.
+complete-follow-up reference results and the confounding comparison. The
+[November 2026 review](docs/review-2026-11-14.md) lists the software and
+epidemiology findings, what changed, and what remains open. This is a training
+prototype, not a validated assessment instrument.
 
 ## Structure
 

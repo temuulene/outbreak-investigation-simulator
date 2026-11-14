@@ -11,7 +11,15 @@ exposures. Its screening requires an apparent crude coleslaw association that
 attenuates after stratifying by chicken salad, and a vehicle association that
 persists within coleslaw strata. Learners choose both foods themselves. Missing
 stratifier values are excluded and counted; inadequate denominators remain
-not estimable.
+not estimable. The comparison reports the crude relative risk, each stratum, and
+a Mantel-Haenszel pooled relative risk with a Greenland-Robins interval.
+
+Foods appear in `menu_order` everywhere: questionnaires, tables, downloads, and
+selectors. Keep the vehicle out of first place to avoid anchoring. A case
+definition limited to RSVP guests defines the cohort; other guests are
+classified `Excluded` and leave both denominators. The interview roster holds
+the first guests who had reported illness at the start plus well guests, and
+does not change as later reports arrive.
 
 Scheduled report, media, and evidence events come from YAML and run in time order
 with queued tasks. A media response stores the learner's wording and a copy of

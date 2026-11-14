@@ -11,6 +11,7 @@ app_server <- function(input, output, session) {
   feedback <- reactiveVal(NULL)
   strata_result <- reactiveVal(NULL)
   strata_snapshot <- reactiveVal(NULL)
+  strata_pooled <- reactiveVal(NULL)
   steps <- guide_steps()
   guide_step <- reactiveVal(1L)
   furthest_step <- reactiveVal(1L)
@@ -119,11 +120,6 @@ app_server <- function(input, output, session) {
   output$clock <- renderText(game_time(s()$clock))
   output$evidence <- renderUI(tagList(lapply(rev(s()$evidence), function(e) div(class = "evidence-entry",
     div(class = "evidence-meta", game_time(e$time), " / ", e$source), p(e$finding)))))
-  output$metrics <- renderUI({
-    state <- s()
-    div(class = "metrics", div(strong(nrow(state$collected)), "guest records"),
-      div(strong(length(state$interviewed)), "of 6 contacts"), div(strong(length(state$checkpoints)), "checkpoints saved"))
-  })
   observeEvent(input$begin, {
     if (furthest_step() == 1L) {
       ok <- run(function(state) start_session(if (is.null(input$scenario_id)) "potluck-01" else input$scenario_id, isTRUE(input$randomize)), NULL)
@@ -235,7 +231,11 @@ app_server <- function(input, output, session) {
     name <- if (provider == "gemini") "Gemini" else "Dialogue assistance"
     p(class = "small-note", paste0(name, " helps with natural replies and follow-up questions. Each person answers from their own knowledge."))
   })
-  output$interview_progress <- renderUI(p(class = "interview-count", paste(length(s()$interviewed), "of 6 contacts used · Aim for 3–4, then continue when ready.")))
+  output$interview_progress <- renderUI({
+    plan <- s()$sc$interviews
+    p(class = "interview-count", paste0(length(s()$interviewed), " of ", plan$max, " contacts used · ",
+      if (is.null(plan$suggested)) "Continue when ready." else paste0("Aim for about ", plan$suggested, ", then continue when ready.")))
+  })
   menu_known <- reactiveVal(FALSE)
   observe(menu_known(s()$menu))
   output$food_questions <- renderUI({
@@ -251,6 +251,7 @@ app_server <- function(input, output, session) {
   })
   output$definition_summary <- renderUI({
     d <- draft_definition()
+    validate(need(isTRUE(is.finite(d$start)) && isTRUE(is.finite(d$end)), "Enter the earliest and latest onset in hours."))
     symptoms <- switch(d$clinical, standard = "diarrhea or at least two of cramps, fever, and vomiting", diarrhea = "diarrhea", any = "any of diarrhea, cramps, fever, or vomiting")
     div(class = "definition-card", eyebrow("YOUR WORKING DEFINITION"),
       p(paste(if (d$person == "all") "Any community potluck attendee" else "An RSVP guest at the community potluck",
@@ -258,10 +259,12 @@ app_server <- function(input, output, session) {
   })
   output$case_preview <- renderUI({
     d <- draft_definition()
-    if (d$start >= d$end) return(div(class = "note", "The end of the window must follow the start."))
-    counts <- table(factor(classify_cases(s()$collected, d), levels = c("Case", "Non-case", "Unknown")))
+    if (!isTRUE(d$start < d$end)) return(div(class = "note", "The end of the window must follow the start."))
+    counts <- table(factor(classify_cases(s()$collected, d), levels = case_status_levels()))
+    if (d$person == "all") counts <- counts[names(counts) != "Excluded"]
     div(class = "preview", eyebrow("LIVE PREVIEW · CURRENTLY COLLECTED RECORDS"),
-      paste(paste(names(counts), counts, sep = ": "), collapse = " · "))
+      paste(paste(names(counts), counts, sep = ": "), collapse = " · "),
+      if (d$person == "rsvp") p(class = "small-note", "Excluded guests are outside this cohort. They count in neither attack-rate denominator."))
   })
   observeEvent(input$save_definition, {
     saved <- run(function(state) {
@@ -351,7 +354,7 @@ app_server <- function(input, output, session) {
     s(record_event(state, "analysis_snapshot", list(id = snap$id, time = snap$time)))
     snapshot(snap)
     feedback(NULL)
-    strata_result(NULL); strata_snapshot(NULL)
+    strata_result(NULL); strata_pooled(NULL); strata_snapshot(NULL)
     snap
   }
   observeEvent(input$freeze, tryCatch({freeze_snapshot(); showNotification("Analysis snapshot frozen. Downloads and calculation checks use this exact version.")}, error = function(e) showNotification(conditionMessage(e), type = "warning")))
@@ -361,7 +364,7 @@ app_server <- function(input, output, session) {
   output$snapshot_info <- renderUI({
     snap <- snapshot()
     if (is.null(snap)) return(p(class = "small-note", "Downloads freeze your first snapshot automatically. The preview below shows up to 12 current records."))
-    div(class = "note", paste("Downloads use snapshot", snap$id, "·", nrow(snap$data), "records ·", game_time(snap$time), ". Freeze again to include later collection or definition changes. Preview below is current."))
+    div(class = "note", paste0("Downloads, checks, the case description, and the curve use snapshot ", snap$id, " · ", nrow(snap$data), " records · ", game_time(snap$time), ". Freeze again to include later collection or definition changes. The record preview is current."))
   })
   output$csv <- downloadHandler("potluck-line-list.csv", function(file) write.csv(get_snapshot()$data, file, row.names = FALSE, na = ""))
   output$xlsx <- downloadHandler("potluck-analysis.xlsx", function(file) write_workbook(get_snapshot()$data, file, isolate(s())$sc))
@@ -380,24 +383,42 @@ app_server <- function(input, output, session) {
     }, error = function(e) showNotification(conditionMessage(e), type = "warning"))
   })
   output$calculation_feedback <- renderUI(if (!is.null(feedback())) div(class = "note", role = "status", feedback()))
+  # Tables, the case description, and the curve all read the same records:
+  # the frozen snapshot once one exists, otherwise the current line list.
+  analysis_data <- reactive({
+    snap <- snapshot()
+    if (is.null(snap)) line_list(s()) else snap$data
+  })
   output$rates <- renderTable({
     req(input$show_rates)
-    snap <- snapshot()
-    data <- if (is.null(snap)) line_list(s()) else snap$data
+    data <- analysis_data()
     foods <- names(food_labels(s()$sc))
     if (!s()$menu) foods <- intersect(foods, names(data))
     req(length(foods))
     attack_rates(data, foods)
   }, digits = 3, na = "Not estimable")
-  output$epi_curve <- renderPlot({
-    data <- line_list(s())
-    if (!"onset_hours" %in% names(data)) return(invisible(NULL))
-    onset <- data$onset_hours[data$case_status == "Case" & !is.na(data$onset_hours)]
-    if (!length(onset)) return(invisible(NULL))
-    par(mar = c(4, 4, 2, 1), bg = "#ffffff", col.axis = "#203d38")
-    hist(onset, breaks = seq(0, max(96, ceiling(max(onset) / 12) * 12 + 12), 12),
-      col = "#418675", border = "white", main = "Onset, not report time", xlab = "Hours after Saturday's meal", ylab = "Collected cases")
+  output$case_description <- renderUI({
+    summary <- describe_cases(analysis_data())
+    if (!summary$cases) return(p(class = "small-note", "No classified cases yet. Collect symptoms and onset times, then check your case definition."))
+    range_text <- function(x, unit) sprintf("median %s %s (range %s to %s)", format(round(x[["median"]], 1)), unit, format(round(x[["min"]], 1)), format(round(x[["max"]], 1)))
+    asked <- summary$symptoms[summary$symptoms$asked > 0, ]
+    tagList(
+      p(strong(summary$cases), if (summary$cases == 1) " case under your definition." else " cases under your definition."),
+      if (!is.null(summary$incubation)) p(paste0("Time from meal to onset: ", range_text(summary$incubation, "hours"), ". Compare this with the incubation period of the agents you suspect.")),
+      if (nrow(asked)) tags$ul(lapply(seq_len(nrow(asked)), function(i) tags$li(sprintf("%s: %d of %d cases (%d%%)",
+        asked$symptom[i], asked$cases[i], asked$asked[i], round(100 * asked$cases[i] / asked$asked[i]))))),
+      if (!is.null(summary$age)) p(paste0("Age: ", range_text(summary$age, "years"), ".")),
+      if (!is.null(summary$sex)) p(paste0("Sex: ", paste(names(summary$sex), summary$sex, sep = " ", collapse = ", "), ".")))
   })
+  epi_curve <- reactive({
+    width <- suppressWarnings(as.numeric(input$curve_interval))
+    onset_counts(analysis_data(), if (length(width) == 1L && is.finite(width)) width else 6)
+  })
+  output$epi_curve <- renderPlot({
+    curve <- epi_curve()
+    validate(need(!is.null(curve), "Collect onset times to draw the epidemic curve."))
+    plot_epi_curve(curve)
+  }, alt = reactive(epi_curve_alt(epi_curve())))
   observeEvent(input$checkpoint, {
     index <- guide_step()
     if (steps$page[index] != "decision") return()
@@ -443,12 +464,19 @@ app_server <- function(input, output, session) {
   output$truth_reveal <- renderUI({
     state <- s()
     if (!state$revealed) return(tagList(p("Compare your reasoning with the simulated facts. This is not a pass or fail."), actionButton("reveal", "Reveal scenario facts")))
+    reference <- truth_summary(state)
+    describe <- function(r) sprintf("%d of %d who ate it became ill and %d of %d who did not (relative risk %s)", r$exposed_cases, r$exposed_total,
+      r$unexposed_cases, r$unexposed_total, if (is.finite(r$relative_risk)) sprintf("%.1f", r$relative_risk) else "not finite")
     tagList(p(paste("Simulated vehicle:", food_labels(state$sc)[state$sc$truth$vehicle])), p(paste("Pathogen:", state$sc$pathogen$name)),
-      p(state$sc$truth$process_failure), p("Recall errors and incomplete collection can change the observed association. Slow cooling alone does not prove cause. Later reports concern earlier onsets; the scenario does not model ongoing exposure or cases prevented."))
+      p(state$sc$truth$process_failure),
+      p(paste0("With every attendee and perfect recall: ", describe(reference$actual), ". With every attendee as guests remembered it: ", describe(reference$recalled),
+        ". Compare both with your own estimate. On average, recall error unrelated to illness pulls an association toward 1; in one small dataset, chance can move it either way.")), p("Recall errors and incomplete collection can change the observed association. Slow cooling alone does not prove cause. Later reports concern earlier onsets; the scenario does not model ongoing exposure or cases prevented."))
   })
   output$decision_review <- renderUI({
     req(input$retry_checkpoint)
-    cp <- s()$checkpoints[[as.integer(input$retry_checkpoint)]]
+    index <- suppressWarnings(as.integer(input$retry_checkpoint))
+    req(length(index) == 1L, !is.na(index), index >= 1L, index <= length(s()$checkpoints))
+    cp <- s()$checkpoints[[index]]
     div(class = "preview", h4(paste("Then:", cp$suspect, "·", cp$confidence)), p(cp$action),
       disclosure("See the evidence you had then", tags$ul(lapply(cp$evidence, function(e) tags$li(paste(e$source, "—", e$finding))))),
       disclosure("Consider another approach", p("Keep alternative sources open, seek comparable histories from well guests, and take low-burden protective steps while uncertainty remains. Which of these fits the evidence you had?")))
@@ -478,12 +506,28 @@ app_server <- function(input, output, session) {
   observeEvent(input$show_strata, {
     tryCatch({
       snap <- get_snapshot()
-      strata_result(stratified_rates(snap$data, input$strata_exposure, input$strata_food))
+      summary <- stratified_summary(snap$data, input$strata_exposure, input$strata_food)
+      strata_result(summary$strata)
+      strata_pooled(summary[c("crude", "adjusted")])
       strata_snapshot(snap$id)
-    }, error = function(e) {strata_result(NULL); strata_snapshot(NULL); showNotification(conditionMessage(e), type = "warning")})
+    }, error = function(e) {strata_result(NULL); strata_pooled(NULL); strata_snapshot(NULL); showNotification(conditionMessage(e), type = "warning")})
   })
-  output$strata_info <- renderUI(if (!is.null(strata_snapshot())) p(class = "small-note", paste("Comparison uses frozen snapshot", strata_snapshot(), ".")))
-  output$strata_table <- renderTable(strata_result(), digits = 3, na = "Not estimable")
+  output$strata_info <- renderUI({
+    if (is.null(strata_snapshot())) return(NULL)
+    pooled <- strata_pooled()
+    show <- function(x) if (is.na(x)) "not estimable" else if (is.infinite(x)) "infinite" else sprintf("%.2f", x)
+    tagList(p(class = "small-note", paste0("Comparison uses frozen snapshot ", strata_snapshot(), ".")),
+      if (!is.null(pooled)) div(class = "note", role = "status",
+        p(paste0("Crude relative risk: ", show(pooled$crude), ". Mantel-Haenszel relative risk, adjusted for the grouping food: ",
+          show(pooled$adjusted[["rr"]]), if (is.finite(pooled$adjusted[["lower"]])) sprintf(" (approx. 95%% CI %.2f to %.2f)", pooled$adjusted[["lower"]], pooled$adjusted[["upper"]]) else "", ".")),
+        p("An adjusted value that moves away from the crude value suggests confounding by the grouping food. If the two group-specific values differ widely from each other, report them separately instead of pooling.")))
+  })
+  # Lead with the group label so it stays visible in a wide table.
+  output$strata_table <- renderTable({
+    result <- strata_result()
+    if (is.null(result)) return(NULL)
+    result[c("stratum", setdiff(names(result), "stratum"))]
+  }, digits = 3, na = "Not estimable")
   export_guide <- function() list(step = isolate(guide_step()), furthest = isolate(furthest_step()), drafts = isolate(checkpoint_drafts()), current_fields = setNames(lapply(checkpoint_fields(), function(field) isolate(input[[field]])), checkpoint_fields()), recommendation_draft = isolate(input$recommendation))
   output$resume_record <- downloadHandler("fieldnotes-resume.json", function(file) save_session(isolate(s()), file, export_guide()))
   restore_upload <- function(upload) {
@@ -495,7 +539,7 @@ app_server <- function(input, output, session) {
       s(restored$state)
       snapshot(if (length(restored$state$downloads)) tail(restored$state$downloads, 1L)[[1]] else NULL)
       feedback(NULL); repeat_plan(FALSE)
-      strata_result(NULL); strata_snapshot(NULL)
+      strata_result(NULL); strata_pooled(NULL); strata_snapshot(NULL)
       debrief_generation(isolate(debrief_generation()) + 1L)
       index <- if (is.null(g$step)) 1L else as.integer(g$step)
       if (length(index) != 1L || is.na(index) || index < 1L || index > nrow(steps)) index <- 1L

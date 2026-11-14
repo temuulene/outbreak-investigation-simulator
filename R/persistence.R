@@ -121,7 +121,7 @@ validate_session_shapes <- function(s) {
     for (name in setdiff(names(d), c("sex", "case_status", "age", "id", "onset_hours", "report_hour"))) if (!is.logical(d[[name]])) fail()
     for (name in intersect(names(d), c("age", "id", "onset_hours", "report_hour"))) if (!is.numeric(d[[name]]) || any(!is.na(d[[name]]) & (!is.finite(d[[name]]) | d[[name]] < 0 | d[[name]] > 100000))) fail()
     if ("sex" %in% names(d) && (!is.character(d$sex) || any(!is.na(d$sex) & !d$sex %in% c("F", "M")))) fail()
-    if (snapshot && (!"case_status" %in% names(d) || !is.character(d$case_status) || anyNA(d$case_status) || any(!d$case_status %in% c("Case", "Non-case", "Unknown")))) fail()
+    if (snapshot && (!"case_status" %in% names(d) || !is.character(d$case_status) || anyNA(d$case_status) || any(!d$case_status %in% case_status_levels()))) fail()
   }
   for (field in c("queue", "evidence", "log", "chats", "checkpoints", "actions", "case_defs", "downloads", "checks", "media_events", "media_responses", "instructor_reviews")) if (!entries(s[[field]])) fail()
   for (field in c("completed", "fired_events", "interviewed")) if (!strings(s[[field]])) fail()

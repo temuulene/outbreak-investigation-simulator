@@ -15,6 +15,9 @@ for (id in scenario_catalog()$id) {
   lines <- c(lines, paste("##", s$sc$title), "",
     paste("Seed:", s$sc$seed, "| Collected attendees:", nrow(s$collected),
       "| Teaching signal accepted:", teaching_signal(s)), "",
+    sprintf("With perfect recall the vehicle table is %d / %d against %d / %d (RR %.2f). Recall error accounts for the gap from the crude RR below.",
+      truth_summary(s)$actual$exposed_cases, truth_summary(s)$actual$exposed_total, truth_summary(s)$actual$unexposed_cases,
+      truth_summary(s)$actual$unexposed_total, truth_summary(s)$actual$relative_risk), "",
     "| Exposure | Exposed cases / total | Unexposed cases / total | Crude RR |",
     "| --- | ---: | ---: | ---: |")
   for (i in seq_len(nrow(rates))) {
@@ -32,6 +35,11 @@ for (id in scenario_catalog()$id) {
       r <- strata[i, ]
       lines <- c(lines, sprintf("| %s | %d / %d | %d / %d | %.2f |",
         r$stratum, r$exposed_cases, r$exposed_total, r$unexposed_cases, r$unexposed_total, r$relative_risk))
+    }
+    for (pair in list(c(s$sc$analysis$stratifier, s$sc$truth$vehicle), c(s$sc$truth$vehicle, s$sc$analysis$stratifier))) {
+      pooled <- stratified_summary(line_list(s), pair[1], pair[2])
+      lines <- c(lines, "", sprintf("%s adjusted for %s: crude RR %.2f; Mantel-Haenszel RR %.2f (approx. 95%% CI %.2f to %.2f).",
+        pair[1], pair[2], pooled$crude, pooled$adjusted[["rr"]], pooled$adjusted[["lower"]], pooled$adjusted[["upper"]]))
     }
   }
   lines <- c(lines, "")

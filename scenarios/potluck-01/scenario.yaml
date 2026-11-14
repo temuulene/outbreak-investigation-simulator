@@ -19,7 +19,7 @@ truth:
   vehicle: chicken_salad
   attack_rate_exposed: 0.60
   attack_rate_unexposed: 0.05
-  process_failure: Cooked chicken cooled slowly in a deep stock pot overnight.
+  process_failure: Chicken was cooked in one large batch without a temperature check, then cooled slowly in a deep stock pot overnight.
 recall: {p_forget_item: 0.10, p_false_item: 0.05}
 interviews: {suggested: 4, max: 6, minutes_per_topic: 5}
 tasks:
@@ -32,7 +32,7 @@ tasks:
 actions:
   - {id: advise_guests, label: Advise guests on leftovers and severe illness, justified_if: cluster_confirmed}
   - {id: refer_environmental_health, label: Refer to environmental health, justified_if: cluster_confirmed}
-  - {id: food_handler_guidance, label: Recommend safe cooling guidance, justified_if: process_failure_known}
+  - {id: food_handler_guidance, label: Recommend safe cooking and cooling guidance, justified_if: process_failure_known}
   - {id: close_hall, label: Recommend closing the hall, justified_if: ongoing_exposure}
   - {id: public_notice, label: Recommend a public notice, justified_if: ongoing_exposure}
 events:

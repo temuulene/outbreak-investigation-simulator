@@ -24,7 +24,8 @@ The meal occurred Saturday at 18:00 (39 hours before the clock starts).
    well guests, symptoms, onset, and every food. Send the team.
 5. Delegate appropriate lab/environmental tasks and advance to due results.
 6. Freeze a line-list snapshot; download CSV plus R script or Excel workbook.
-   Check attack rates and RR. Interpret uncertainty, incomplete data, and recall.
+   Describe the cases first: symptoms, incubation, and the onset curve. Then
+   check attack rates and RR. Interpret uncertainty, incomplete data, and recall.
 7. When a media request arrives, draft a short response distinguishing known
    findings, uncertainty, and actions. Cite the notebook entries you used.
 8. Save the analysis checkpoint and recommendation. Review the profile and
@@ -58,8 +59,11 @@ usability problems, but cannot establish educational effectiveness.
 
 Choose the intermediate scenario in the optional welcome settings. Compare crude
 food associations, then choose two foods in the optional stratified analysis.
-Discuss whether an association persists within strata, the size of each comparison
-group, missing exposure histories, and the limits of observational evidence.
+The app reports the crude relative risk, each stratum, and a Mantel-Haenszel
+adjusted relative risk with an approximate interval. Discuss whether an
+association persists within strata, why the adjusted value moves, the size of
+each comparison group, missing exposure histories, and the limits of
+observational evidence.
 Do not announce the simulated vehicle before learners form their own explanation.
 
 Save a resumable JSON file before closing. It restores a local session; it is not
@@ -80,6 +84,18 @@ that screening does not guarantee a useful result for every learner's choices.
   also add fields. Case definitions can be revised throughout.
 - Lab sampling is simplified to up to three already reported ill guests; only
   those records receive positive stool status. Unsampled guests remain unknown.
+  Every sample from an ill guest is positive, and the leftover result reports a
+  match only when stool isolates exist.
+- Symptoms occur only in simulated cases. Every clinical definition is therefore
+  fully specific, and a broader definition only gains sensitivity. Discuss the
+  usual trade-off; the data will not show it.
+- An RSVP-only definition removes walk-ins from the cohort. They show as
+  Excluded and count in neither denominator.
+- Everyone the team contacts responds, and every ill guest reports. Recall error
+  affects foods only and does not depend on illness.
+- The calculation check accepts attack rates within 0.015 and a relative risk
+  within 0.05 of the exact value, or of the ratio of the learner's own correctly
+  rounded attack rates. It then shows the unrounded value.
 - No real guest records or learner authentication. Refresh creates a fresh session;
   upload a previously saved resume file to continue. Hosting is configured separately.
 - Scenario YAML configures seed, foods, risks, symptoms, tasks, and action rules.

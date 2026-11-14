@@ -67,13 +67,20 @@ complete_task <- function(s, job) {
     s$process_known <- TRUE
     message <- paste(s$sc$truth$process_failure, "A process failure is not proof of the source.")
   } else if (job$id == "stool_samples") {
-    message <- paste("The lab identifies", s$sc$pathogen$name, "in sampled ill guests. This does not identify a food vehicle.")
     s$collected$stool_positive <- rep(NA, nrow(s$collected))
     sampled <- head(s$reported$id[which(s$reported$ill & s$reported$report_hour <= job$requested)], 3)
-    s <- collect_records(s, sampled, character())
-    s$collected$stool_positive[s$collected$id %in% sampled] <- TRUE
+    if (length(sampled)) {
+      s <- collect_records(s, sampled, character())
+      s$collected$stool_positive[s$collected$id %in% sampled] <- TRUE
+      message <- paste0("The lab identifies ", s$sc$pathogen$name, " in ", length(sampled), " of ", length(sampled),
+        " sampled ill guests. ", if ("leftover_testing" %in% s$completed) "The isolates match the one from the preserved leftovers. " else "",
+        "A stool result confirms the illness; it does not identify a food vehicle.")
+    } else message <- "No guest had reported illness when samples were requested, so none were collected."
   } else if (job$id == "leftover_testing") {
-    message <- paste("Preserved", food_labels(s$sc)[[s$sc$truth$vehicle]], "tests positive for", s$sc$pathogen$name, "matching the stool isolates.")
+    # Only claim a match when there are stool isolates to compare with.
+    message <- paste0("Among the preserved leftovers, only ", food_labels(s$sc)[[s$sc$truth$vehicle]], " tests positive for ",
+      s$sc$pathogen$name, ". ", if (isTRUE(any(s$collected$stool_positive))) "The isolate matches the stool isolates. " else
+        "No stool isolates are available for comparison yet. ", "A negative food sample does not rule that food out.")
   } else message <- "Pat labels and preserves the leftovers for environmental health sampling."
   add_evidence(s, job$label, message)
 }
@@ -101,7 +108,9 @@ request_task <- function(s, id, audience = "all", domains = character(), foods =
 
 take_action <- function(s, id, reason) {
   if (!nzchar(trimws(reason))) stop("Record why this action is justified now.")
-  action <- Filter(function(x) x$id == id, s$sc$actions)[[1]]
+  action <- Filter(function(x) identical(x$id, id), s$sc$actions)
+  if (!length(action)) stop("Choose an available action.")
+  action <- action[[1]]
   justified <- switch(action$justified_if, cluster_confirmed = TRUE,
     process_failure_known = s$process_known, ongoing_exposure = FALSE, FALSE)
   entry <- list(time = s$clock, id = id, label = action$label, reason = reason,

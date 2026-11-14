@@ -33,7 +33,8 @@ test_that("classification applies clinical, time, population, and lab criteria",
     vomiting = FALSE, onset_hours = c(24, NA, 90, 24), on_list = c(TRUE, TRUE, TRUE, FALSE))
   expect_equal(classify_cases(d), c("Case", "Non-case", "Non-case", "Case"))
   def <- default_definition(); def$person <- "rsvp"
-  expect_equal(classify_cases(d, def)[4], "Non-case")
+  # An ill walk-in is outside an RSVP-only cohort, not a well member of it.
+  expect_equal(classify_cases(d, def)[4], "Excluded")
   def$lab <- TRUE
   expect_equal(classify_cases(d, def)[1], "Unknown")
 })

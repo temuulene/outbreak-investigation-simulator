@@ -4,7 +4,9 @@ generate_data <- function(sc) {
   on.exit(if (is.null(old)) {
     if (exists(".Random.seed", .GlobalEnv)) rm(".Random.seed", envir = .GlobalEnv)
   } else assign(".Random.seed", old, .GlobalEnv))
-  set.seed(sc$seed)
+  # Pin the generators so a seed gives the same records whatever the caller's RNGkind().
+  # Restoring .Random.seed above also restores the caller's generator kinds.
+  set.seed(sc$seed, kind = "Mersenne-Twister", normal.kind = "Inversion", sample.kind = "Rejection")
   n <- sc$setting$attendees
   truth <- data.frame(id = seq_len(n), age = sample(5:80, n, TRUE),
     sex = sample(c("F", "M"), n, TRUE), on_list = runif(n) < sc$setting$guest_list_completeness)

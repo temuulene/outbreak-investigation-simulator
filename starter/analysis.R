@@ -2,16 +2,26 @@
 # TRUE = exposed, FALSE = unexposed, NA = not asked or unknown.
 library(dplyr)
 guests <- read.csv("potluck-line-list.csv", na.strings = "")
-food <- "chicken_salad" # Repeat for each collected exposure.
-stopifnot(food %in% names(guests))
+
+# Every column that is not a guest detail, symptom, or status is a food exposure.
+other_columns <- c("id", "on_list", "age", "sex", "diarrhea", "cramps", "fever",
+  "vomiting", "bloody_stool", "onset_hours", "report_hour", "health_care_visits",
+  "stool_positive", "case_status")
+foods <- setdiff(names(guests), other_columns)
+stopifnot(length(foods) > 0)
+print(foods)
+
+food <- foods[1] # Repeat for every food, or wrap the steps below in a function.
+# "Unknown" and "Excluded" records belong in neither denominator.
 analysis <- guests |>
-  filter(case_status != "Unknown", !is.na(.data[[food]])) |>
+  filter(case_status %in% c("Case", "Non-case"), !is.na(.data[[food]])) |>
   mutate(exposed = .data[[food]], case = case_status == "Case")
-table <- analysis |>
+counts <- analysis |>
   summarise(cases = sum(case), total = n(), .by = exposed)
-print(table)
-# TODO: add attack_rate = cases / total to the table.
+print(counts)
+# TODO: add attack_rate = cases / total to the counts.
 # TODO: divide exposed attack rate by unexposed attack rate for relative risk.
+# Keep full precision until the last step; round only what you report.
 # A zero denominator is not estimable. A zero unexposed attack rate with a
 # positive exposed attack rate gives an infinite RR, not proof of causation.
 # Compare unasked fields and exclusions before interpreting the association.

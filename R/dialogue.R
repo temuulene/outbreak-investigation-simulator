@@ -51,7 +51,7 @@ dialogue_local_topics <- function(question, character, selected_topic, history) 
 dialogue_anchors <- function(answer) {
   terms <- c("Pat", "Lou", "cook", "Saturday", "Tuesday", "F", "M",
     "Chocolate cake", "Fruit punch", "Fried rice", "Coleslaw", "chicken salad sandwiches",
-    "chicken", "cooked", "cooling", "deep stock pot", "overnight", "mixed", "hours", "diarrhea", "bloody diarrhea",
+    "chicken", "cooked", "temperature", "cooling", "deep stock pot", "overnight", "mixed", "hours", "diarrhea", "bloody diarrhea",
     "fever", "vomiting", "cramps", "nausea")
   terms[vapply(terms, function(term) grepl(paste0("\\b", term, "\\b"), answer,
     ignore.case = TRUE, perl = TRUE), logical(1))]

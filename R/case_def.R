@@ -11,7 +11,13 @@ classify_cases <- function(data, definition = default_definition()) {
   time <- field("onset_hours") >= definition$start & field("onset_hours") <= definition$end
   # Known absence of symptoms establishes a non-case even without an onset.
   result <- clinical & time
-  if (definition$person == "rsvp") result <- result & field("on_list")
   if (definition$lab) result <- result & field("stool_positive")
-  ifelse(is.na(result), "Unknown", ifelse(result, "Case", "Non-case"))
+  status <- ifelse(is.na(result), "Unknown", ifelse(result, "Case", "Non-case"))
+  # A person restriction defines the cohort. People outside it leave both the
+  # numerator and the denominator; counting an ill walk-in as a well guest
+  # would bias every attack rate.
+  if (definition$person == "rsvp") status[!field("on_list") %in% TRUE] <- "Excluded"
+  status
 }
+
+case_status_levels <- function() c("Case", "Non-case", "Unknown", "Excluded")

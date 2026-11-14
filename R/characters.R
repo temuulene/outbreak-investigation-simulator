@@ -1,5 +1,8 @@
+# The roster does not move with the clock: it holds the first guests who had
+# reported illness by Monday 09:00, plus well guests. A roster that followed
+# the clock would drop earlier contacts and their conversations as new reports arrived.
 available_characters <- function(s) {
-  ill <- s$reported$id[which(s$reported$ill & s$reported$report_hour <= s$clock)]
+  ill <- s$reported$id[which(s$reported$ill & s$reported$report_hour <= 0)]
   well <- s$reported$id[which(!s$reported$ill)]
   c("Pat · organizer" = "organizer", "Lou · cook" = "cook",
     setNames(paste0("guest_", head(ill, 2)), paste("Guest", head(ill, 2), "· reported ill")),
@@ -75,7 +78,7 @@ interview_clarification <- function(character) {
 interview <- function(s, character, question, selected_topic = "auto") {
   if (!character %in% unname(available_characters(s))) stop("Choose an available interview contact.")
   if (!nzchar(trimws(question)) && identical(selected_topic, "auto")) stop("Enter a question or choose a topic.")
-  if (!character %in% s$interviewed && length(s$interviewed) >= s$sc$interviews$max) stop("The six-interview limit has been reached.")
+  if (!character %in% s$interviewed && length(s$interviewed) >= s$sc$interviews$max) stop("The ", s$sc$interviews$max, "-interview limit has been reached.")
   topics <- interview_topics(question, character, selected_topic)
   replies <- character()
   if (character == "organizer") {
@@ -106,7 +109,7 @@ interview <- function(s, character, question, selected_topic = "auto") {
       "I can tell you how I prepared and stored them."))
     if (any(c("preparation", "storage") %in% topics)) {
       s$process_known <- TRUE
-      replies <- c(replies, paste("I cooked the chicken, then left it cooling in a deep stock pot overnight. I mixed the salad the next day and brought it to the hall."))
+      replies <- c(replies, "I cooked the chicken in one big batch without checking its temperature, then left it cooling in a deep stock pot overnight. I mixed the salad the next day and brought it to the hall.")
     }
     if ("menu" %in% topics) replies <- c(replies, "I brought the chicken salad sandwiches. I don't know what everyone ate.")
     if ("food_sources" %in% topics) replies <- c(replies, "I brought the chicken salad sandwiches. I don't know who brought the other dishes.")
