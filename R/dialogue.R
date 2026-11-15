@@ -48,24 +48,34 @@ dialogue_local_topics <- function(question, character, selected_topic, history) 
   topics
 }
 
+# Terms a rephrased reply must keep word for word. The cast, days, sex codes,
+# and symptom words belong to the app; food labels and preparation clues come
+# from the scenario files.
 dialogue_anchors <- function(answer) {
-  terms <- c("Pat", "Lou", "cook", "Saturday", "Tuesday", "F", "M",
-    "Chocolate cake", "Fruit punch", "Fried rice", "Coleslaw", "chicken salad sandwiches",
-    "chicken", "cooked", "temperature", "cooling", "deep stock pot", "overnight", "mixed", "hours", "diarrhea", "bloody diarrhea",
-    "fever", "vomiting", "cramps", "nausea")
-  terms[vapply(terms, function(term) grepl(paste0("\\b", term, "\\b"), answer,
-    ignore.case = TRUE, perl = TRUE), logical(1))]
+  terms <- unique(c(
+    "Pat", "Lou", "cook", "Friday", "Saturday", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "F", "M",
+    "hours", "diarrhea", "bloody diarrhea", "bloody stool", "fever", "vomiting", "cramps", "nausea",
+    scenario_vocabulary$locked_terms
+  ))
+  terms[vapply(terms, dialogue_has_term, logical(1), text = answer)]
+}
+
+dialogue_has_term <- function(term, text) {
+  grepl(paste0("\\b\\Q", term, "\\E\\b"), text, ignore.case = TRUE, perl = TRUE)
 }
 
 dialogue_reply_validate <- function(reply, answer, review) {
-  if (!is.character(reply) || length(reply) != 1L || is.na(reply) ||
-      !nzchar(trimws(reply)) || nchar(reply) > 3200L || grepl("[<>]|https?://|www\\.", reply, ignore.case = TRUE)) return(FALSE)
-  if (!is.list(review) || !identical(sort(names(review)), c("complete", "in_character", "supported")) ||
-      !all(vapply(review, identical, logical(1), TRUE))) return(FALSE)
-  numbers <- function(text) sort(unique(regmatches(text, gregexpr("[0-9]+(?:[.:][0-9]+)*", text, perl = TRUE))[[1L]]))
+  usable <- is.character(reply) && length(reply) == 1L && !is.na(reply) && nzchar(trimws(reply)) &&
+    nchar(reply) <= 3200L && !grepl("[<>]|https?://|www\\.", reply, ignore.case = TRUE)
+  if (!usable) return(FALSE)
+  reviewed <- is.list(review) && identical(sort(names(review)), c("complete", "in_character", "supported")) &&
+    all(vapply(review, identical, logical(1), TRUE))
+  if (!reviewed) return(FALSE)
+  numbers <- function(text) {
+    sort(unique(regmatches(text, gregexpr("[0-9]+(?:[.:][0-9]+)*", text, perl = TRUE))[[1L]]))
+  }
   identical(numbers(reply), numbers(answer)) &&
-    all(vapply(dialogue_anchors(answer), function(term) grepl(paste0("\\b", term, "\\b"), reply,
-      ignore.case = TRUE, perl = TRUE), logical(1)))
+    all(vapply(dialogue_anchors(answer), dialogue_has_term, logical(1), text = reply))
 }
 
 dialogue_validate <- function(value, character) {

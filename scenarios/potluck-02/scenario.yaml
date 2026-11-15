@@ -1,13 +1,27 @@
 id: potluck-02
 title: Two foods, one shared story
+difficulty: Intermediate
 seed: 4172
 setting:
   attendees: 180
   guest_list_completeness: 0.90
+  meal_date: "2026-06-06"   # A Saturday. The meal is at 18:00; the call comes Monday 09:00.
+  leftovers_taken_home: true
+  ongoing_exposure: false
+briefing:
+  source: Pat · initial call
+  finding: Several guests report illness after the potluck on Saturday 6 June. Exposure at the hall ended Saturday night. The fridge will be cleared Tuesday at 09:00.
 pathogen:
   name: Salmonella Enteritidis
   incubation_hours: {median: 24, p95: 60}
   symptoms: {diarrhea: 0.90, cramps: 0.80, fever: 0.70, vomiting: 0.30, bloody_stool: 0.10}
+# Unrelated mild illness among guests the outbreak spared. Onset is in hours
+# after the meal; a negative value falls before it.
+background_illness:
+  p_symptomatic: 0.08
+  p_self_report: 0.25
+  symptoms: {diarrhea: 0.35, cramps: 0.60, fever: 0.10, vomiting: 0.25, bloody_stool: 0.0}
+  onset_hours: {from: -36, to: 108}
 foods:
   - {id: chicken_salad, label: Chicken salad sandwiches, p_eaten: 0.55}
   - {id: coleslaw, label: Coleslaw, p_eaten: 0.35, conditional_on: chicken_salad, p_if_exposed: 0.80, p_if_unexposed: 0.20}
@@ -21,6 +35,15 @@ truth:
   attack_rate_unexposed: 0.05
   process_failure: Chicken was cooked in one large batch without a temperature check, then cooled slowly in a deep stock pot overnight.
 recall: {p_forget_item: 0.03, p_false_item: 0.02}
+reporting: {p_self_report: 0.80}
+response: {p_respond_ill: 0.95, p_respond_well: 0.85}
+lab: {stool_sensitivity: 0.85, food_sensitivity: 1.0}
+analysis: {stratifier: coleslaw}
+cook:
+  dish: chicken_salad
+  preparation: I cooked the chicken in one big batch without checking its temperature, then left it cooling in a deep stock pot overnight. I mixed the salad the next day and brought it to the hall.
+  # Clues an optional language model must keep word for word when it rephrases the account.
+  locked_terms: [chicken, cooked, temperature, cooling, deep stock pot, overnight, mixed]
 interviews: {suggested: 4, max: 6, minutes_per_topic: 5}
 tasks:
   - {id: guest_list, label: Request the RSVP list, effort_min: 10, turnaround_hours: 2}
@@ -30,14 +53,12 @@ tasks:
   - {id: leftover_testing, label: Test preserved leftovers, requires: hold_leftovers, effort_min: 10, turnaround_hours: 72}
   - {id: food_prep_review, label: Environmental health review, effort_min: 10, turnaround_hours: 24}
 actions:
-  - {id: advise_guests, label: Advise guests on leftovers and severe illness, justified_if: cluster_confirmed}
+  - {id: advise_guests, label: Advise guests on hygiene and severe illness, justified_if: cluster_confirmed}
+  - {id: discard_leftovers, label: Ask guests to discard leftovers taken home, justified_if: leftovers_taken_home}
   - {id: refer_environmental_health, label: Refer to environmental health, justified_if: cluster_confirmed}
   - {id: food_handler_guidance, label: Recommend safe cooking and cooling guidance, justified_if: process_failure_known}
   - {id: close_hall, label: Recommend closing the hall, justified_if: ongoing_exposure}
   - {id: public_notice, label: Recommend a public notice, justified_if: ongoing_exposure}
 events:
   - {id: press-call, type: media, at_hour: 36, source: Local reporter, text: "A reporter asks whether the potluck food caused illness and whether the hall should close. Explain what is known, uncertain, and being done."}
-  - {at_hour: 28, text: Three more guests call. They got sick Sunday; these are existing attendees, not new exposures.}
-
-difficulty: Intermediate
-analysis: {stratifier: coleslaw}
+  - {at_hour: 28, text: "Three more guests call. They got sick Sunday; these are existing attendees, not new exposures.", late_reporters: {count: 3, onset_from: 6, onset_to: 30}}

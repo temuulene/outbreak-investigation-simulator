@@ -1,0 +1,66 @@
+id: potluck-03
+title: A faster illness, and a rumour
+difficulty: Advanced
+seed: 4172
+setting:
+  attendees: 120
+  guest_list_completeness: 0.90
+  meal_date: "2026-06-06"   # A Saturday. The meal is at 18:00; the call comes Monday 09:00.
+  leftovers_taken_home: true
+  ongoing_exposure: false
+briefing:
+  source: Pat · initial call
+  finding: Several guests report illness after the potluck on Saturday 6 June. Exposure at the hall ended Saturday night. The fridge will be cleared Tuesday at 09:00.
+pathogen:
+  name: Clostridium perfringens
+  incubation_hours: {median: 12, p95: 22}
+  symptoms: {diarrhea: 0.95, cramps: 0.85, fever: 0.05, vomiting: 0.08, bloody_stool: 0.0}
+background_illness:
+  p_symptomatic: 0.08
+  p_self_report: 0.25
+  symptoms: {diarrhea: 0.35, cramps: 0.60, fever: 0.10, vomiting: 0.25, bloody_stool: 0.0}
+  onset_hours: {from: -36, to: 108}
+foods:
+  - {id: beef_stew, label: Beef stew, p_eaten: 0.55}
+  - {id: steamed_rice, label: Steamed rice, p_eaten: 0.50}
+  - {id: garden_salad, label: Garden salad, p_eaten: 0.40}
+  - {id: bread_rolls, label: Bread rolls, p_eaten: 0.55}
+  - {id: apple_pie, label: Apple pie, p_eaten: 0.60}
+  - {id: lemonade, label: Lemonade, p_eaten: 0.60}
+menu_order: [apple_pie, lemonade, bread_rolls, garden_salad, steamed_rice, beef_stew]
+truth:
+  vehicle: beef_stew
+  attack_rate_exposed: 0.55
+  attack_rate_unexposed: 0.04
+  process_failure: The beef stew was cooked on Friday, cooled slowly in a deep pot on the stove overnight, and only warmed through before serving.
+# Ill guests who did not eat the rumoured food sometimes say they did.
+recall:
+  p_forget_item: 0.08
+  p_false_item: 0.04
+  rumour: {food: garden_salad, p_false_if_ill: 0.35}
+reporting: {p_self_report: 0.75}
+response: {p_respond_ill: 0.95, p_respond_well: 0.80}
+lab: {stool_sensitivity: 0.70, food_sensitivity: 0.80}
+cook:
+  dish: beef_stew
+  preparation: I made the stew on Friday and left it to cool in the big pot on the stove overnight. On Saturday I warmed it through on a low heat and brought it to the hall.
+  locked_terms: [stew, Friday, big pot, stove, overnight, warmed, low heat]
+interviews: {suggested: 4, max: 6, minutes_per_topic: 5}
+tasks:
+  - {id: guest_list, label: Request the RSVP list, effort_min: 10, turnaround_hours: 2}
+  - {id: team_interviews, label: Send the collection team, effort_min: 15, turnaround_hours: 24}
+  - {id: stool_samples, label: Request stool samples, effort_min: 10, turnaround_hours: 48}
+  - {id: hold_leftovers, label: Preserve the leftovers, effort_min: 5, turnaround_hours: 0, window_closes_hour: 24}
+  - {id: leftover_testing, label: Test preserved leftovers, requires: hold_leftovers, effort_min: 10, turnaround_hours: 72}
+  - {id: food_prep_review, label: Environmental health review, effort_min: 10, turnaround_hours: 24}
+actions:
+  - {id: advise_guests, label: Advise guests on hygiene and severe illness, justified_if: cluster_confirmed}
+  - {id: discard_leftovers, label: Ask guests to discard leftovers taken home, justified_if: leftovers_taken_home}
+  - {id: refer_environmental_health, label: Refer to environmental health, justified_if: cluster_confirmed}
+  - {id: food_handler_guidance, label: Recommend safe cooling and reheating guidance, justified_if: process_failure_known}
+  - {id: close_hall, label: Recommend closing the hall, justified_if: ongoing_exposure}
+  - {id: public_notice, label: Recommend a public notice, justified_if: ongoing_exposure}
+events:
+  - {id: salad-rumour, type: evidence, at_hour: 3, source: Community group post, text: "A guest posts that the garden salad 'tasted off'. Several ill guests reply that the salad must be to blame."}
+  - {id: press-call, type: media, at_hour: 36, source: Local reporter, text: "A reporter asks whether the potluck food caused illness and whether the hall should close. Explain what is known, uncertain, and being done."}
+  - {at_hour: 28, text: "Three more guests call. They got sick Sunday; these are existing attendees, not new exposures.", late_reporters: {count: 3, onset_from: 6, onset_to: 30}}

@@ -40,18 +40,56 @@ decode_session_value <- function(x, depth = 0L) {
 }
 
 save_session <- function(s, path, guide = list()) {
-  public <- s[setdiff(names(s), c("sc", "truth", "reported"))]
-  record <- list(format = "fieldnotes-session", version = 1L, scenario = s$sc$id, seed = s$sc$seed,
-    state = encode_session_value(public), guide = encode_session_value(guide))
+  public <- s[setdiff(names(s), private_fields())]
+  record <- list(
+    format = "fieldnotes-session", version = 1L, scenario = s$sc$id, seed = s$sc$seed,
+    state = encode_session_value(public), guide = encode_session_value(guide)
+  )
   jsonlite::write_json(record, path, auto_unbox = TRUE, null = "null", na = "null", pretty = TRUE)
   invisible(path)
 }
 
+# State fields added after the first release. A file saved before a field
+# existed restores with that field's starting value.
+later_state_fields <- function() "leftovers_home"
+
+restore_session <- function(path, directory = "scenarios") {
+  if (!file.exists(path) || is.na(file.info(path)$size) || file.info(path)$size > 5000000) {
+    stop("Session file is missing or exceeds 5 MB.")
+  }
+  record <- tryCatch(jsonlite::read_json(path, simplifyVector = FALSE), error = function(e) stop("Invalid session JSON."))
+  fields <- c("format", "version", "scenario", "seed", "state", "guide")
+  if (!is.list(record) || anyDuplicated(names(record)) || !setequal(names(record), fields) ||
+      !identical(record$format, "fieldnotes-session") || !identical(record$version, 1L)) {
+    stop("Unsupported session file.")
+  }
+  s <- start_session(record$scenario, seed = record$seed, directory = directory)
+  saved <- decode_session_value(record$state)
+  allowed <- setdiff(names(s), private_fields())
+  if (!is.list(saved) || any(!names(saved) %in% allowed) ||
+      any(!setdiff(allowed, names(saved)) %in% later_state_fields())) {
+    stop("Unknown or missing saved state field.")
+  }
+  s[names(saved)] <- saved
+  validate_session_shapes(s)
+  validate_restored_state(s)
+  guide <- decode_session_value(record$guide)
+  validate_guide(guide)
+  list(state = s, guide = guide)
+}
+
+# Fields a learner's records may hold: everything asked of guests, never simulated truth.
+collectable_fields <- function(s) c(setdiff(names(s$reported), hidden_fields()), "stool_positive")
+
 validate_restored_state <- function(s) {
-  scalar_number <- function(x, minimum = 0, maximum = 100000) is.numeric(x) && length(x) == 1 && !is.na(x) && is.finite(x) && x >= minimum && x <= maximum
-  if (!scalar_number(s$clock)) stop("Invalid saved clock.")
-  if (!is.data.frame(s$collected) || !all(c("id", "on_list") %in% names(s$collected)) || anyNA(s$collected$id) || anyDuplicated(s$collected$id) || any(!s$collected$id %in% s$reported$id)) stop("Invalid collected guest identifiers.")
-  allowed <- c(setdiff(names(s$reported), "ill"), "stool_positive")
+  number <- function(x, minimum = 0, maximum = 100000) {
+    is.numeric(x) && length(x) == 1 && !is.na(x) && is.finite(x) && x >= minimum && x <= maximum
+  }
+  if (!number(s$clock)) stop("Invalid saved clock.")
+  ids_ok <- is.data.frame(s$collected) && all(c("id", "on_list") %in% names(s$collected)) &&
+    !anyNA(s$collected$id) && !anyDuplicated(s$collected$id) && all(s$collected$id %in% s$reported$id)
+  if (!ids_ok) stop("Invalid collected guest identifiers.")
+  allowed <- collectable_fields(s)
   if (any(!names(s$collected) %in% allowed)) stop("Unknown collected field.")
   tasks <- vapply(s$sc$tasks, `[[`, character(1), "id")
   events <- vapply(s$sc$events, `[[`, character(1), "id")
@@ -59,125 +97,160 @@ validate_restored_state <- function(s) {
   expected_events <- vapply(Filter(function(e) e$at_hour <= s$clock, s$sc$events), `[[`, character(1), "id")
   if (!setequal(s$fired_events, expected_events)) stop("Inconsistent saved event timeline.")
   if (anyDuplicated(vapply(s$queue, `[[`, character(1), "id"))) stop("Duplicate queued task.")
+  questionnaire <- setdiff(allowed, c("id", "on_list", "stool_positive"))
   for (job in s$queue) {
-    if (!job$id %in% tasks || !scalar_number(job$requested) || !scalar_number(job$due) || job$requested > s$clock || job$due <= s$clock) stop("Invalid queued task timeline.")
+    timeline_ok <- job$id %in% tasks && number(job$requested) && number(job$due) &&
+      job$requested <= s$clock && job$due > s$clock
+    if (!timeline_ok) stop("Invalid queued task timeline.")
     task <- s$sc$tasks[[match(job$id, tasks)]]
     expected_due <- job$requested + task$effort_min / 60 + task$turnaround_hours
     if (abs(job$due - expected_due) > 1e-8) stop("Invalid queued task duration.")
-    if (job$id == "team_interviews" && (any(!job$people %in% s$reported$id) || any(!job$fields %in% setdiff(allowed, c("id", "on_list", "stool_positive"))))) stop("Invalid queued collection.")
+    if (job$id == "team_interviews" && (any(!job$people %in% s$reported$id) || any(!job$fields %in% questionnaire))) {
+      stop("Invalid queued collection.")
+    }
   }
   for (entry in c(s$evidence, s$log, s$checkpoints, s$actions, s$media_responses, s$instructor_reviews)) {
-    if (!scalar_number(entry$time) || entry$time > s$clock) stop("Invalid saved record timeline.")
+    if (!number(entry$time) || entry$time > s$clock) stop("Invalid saved record timeline.")
   }
-  for (field in c("menu", "walk_ins", "process_known", "late_event", "revealed")) {
+  for (field in c("menu", "walk_ins", "process_known", "leftovers_home", "late_event", "revealed")) {
     if (!is.logical(s[[field]]) || length(s[[field]]) != 1 || is.na(s[[field]])) stop("Invalid saved flag.")
   }
   for (def in c(list(s$definition), s$case_defs)) {
-    if (!def$person %in% c("all", "rsvp") || !def$clinical %in% c("standard", "diarrhea", "any") || !scalar_number(def$start) || !scalar_number(def$end) || def$start >= def$end || !is.logical(def$lab) || length(def$lab) != 1 || is.na(def$lab)) stop("Invalid saved definition.")
+    definition_ok <- def$person %in% c("all", "rsvp") && def$clinical %in% c("standard", "diarrhea", "any") &&
+      number(def$start) && number(def$end) && def$start < def$end &&
+      is.logical(def$lab) && length(def$lab) == 1 && !is.na(def$lab)
+    if (!definition_ok) stop("Invalid saved definition.")
   }
   for (response in s$media_responses) {
-    if (!response$id %in% events || any(!response$evidence_ids %in% seq_along(s$evidence))) stop("Invalid communication reference.")
+    if (!response$id %in% events || any(!response$evidence_ids %in% seq_along(s$evidence))) {
+      stop("Invalid communication reference.")
+    }
   }
   # Revalidate review values; imported self-study notes are not authenticated grades.
   for (review in s$instructor_reviews) instructor_override(s, review$criterion, review$status, review$reason)
   invisible(TRUE)
 }
 
-restore_session <- function(path, directory = "scenarios") {
-  if (!file.exists(path) || is.na(file.info(path)$size) || file.info(path)$size > 5000000) stop("Session file is missing or exceeds 5 MB.")
-  record <- tryCatch(jsonlite::read_json(path, simplifyVector = FALSE), error = function(e) stop("Invalid session JSON."))
-  if (!is.list(record) || anyDuplicated(names(record)) || !setequal(names(record), c("format", "version", "scenario", "seed", "state", "guide")) || !identical(record$format, "fieldnotes-session") || !identical(record$version, 1L)) stop("Unsupported session file.")
-  s <- start_session(record$scenario, seed = record$seed, directory = directory)
-  saved <- decode_session_value(record$state)
-  allowed <- setdiff(names(s), c("sc", "truth", "reported"))
-  if (!is.list(saved) || !setequal(names(saved), allowed)) stop("Unknown or missing saved state field.")
-  s[allowed] <- saved[allowed]
-  validate_session_shapes(s)
-  validate_restored_state(s)
-  guide <- decode_session_value(record$guide)
-  validate_saved_guide(guide)
-  list(state = s, guide = guide)
-}
-
-
 validate_session_shapes <- function(s) {
   fail <- function() stop("Invalid saved state shape or value.")
-  text <- function(x, null = FALSE) (null && is.null(x)) || (is.character(x) && length(x) == 1 && !is.na(x) && nchar(x) <= 20000)
+  check <- function(ok) if (!isTRUE(ok)) fail()
+  text <- function(x, null = FALSE) {
+    (null && is.null(x)) || (is.character(x) && length(x) == 1 && !is.na(x) && nchar(x) <= max_text_length())
+  }
   strings <- function(x) is.character(x) && !anyNA(x) && length(x) <= 5000
-  number <- function(x, min = 0, max = 100000) is.numeric(x) && length(x) == 1 && !is.na(x) && is.finite(x) && x >= min && x <= max
+  number <- function(x, min = 0, max = 100000) {
+    is.numeric(x) && length(x) == 1 && !is.na(x) && is.finite(x) && x >= min && x <= max
+  }
   flag <- function(x) is.logical(x) && length(x) == 1 && !is.na(x)
-  shape <- function(x, required, optional = character()) is.list(x) && !is.data.frame(x) && all(required %in% names(x)) && all(names(x) %in% c(required, optional)) && !anyDuplicated(names(x))
+  shape <- function(x, required, optional = character()) {
+    is.list(x) && !is.data.frame(x) && all(required %in% names(x)) &&
+      all(names(x) %in% c(required, optional)) && !anyDuplicated(names(x))
+  }
   entries <- function(x) is.list(x) && !is.data.frame(x) && length(x) <= 5000
   evidence <- function(x) {
-    if (!entries(x)) fail()
-    for (e in x) if (!shape(e, c("time", "source", "finding")) || !number(e$time, max = s$clock) || !text(e$source) || !text(e$finding)) fail()
+    check(entries(x))
+    for (e in x) {
+      check(shape(e, c("time", "source", "finding")) && number(e$time, max = s$clock) && text(e$source) && text(e$finding))
+    }
   }
   definition <- function(d) {
-    if (!shape(d, names(default_definition()), "time") || !text(d$person) || !d$person %in% c("all", "rsvp") || !text(d$clinical) || !d$clinical %in% c("standard", "diarrhea", "any") || !text(d$place) || !text(d$reason) || !flag(d$lab) || !number(d$start) || !number(d$end) || d$start >= d$end) fail()
+    check(shape(d, names(default_definition()), "time") && text(d$person) && d$person %in% c("all", "rsvp") &&
+      text(d$clinical) && d$clinical %in% c("standard", "diarrhea", "any") && text(d$place) && text(d$reason) &&
+      flag(d$lab) && number(d$start) && number(d$end) && d$start < d$end)
   }
+  # Onset may fall before the meal for unrelated illness; other numbers are never negative.
+  lowest <- c(age = 0, id = 0, onset_hours = -1000, report_hour = 0)
   table <- function(d, snapshot = FALSE) {
-    if (!is.data.frame(d) || !all(c("id", "on_list") %in% names(d)) || nrow(d) > nrow(s$reported) || !is.numeric(d$id) || anyNA(d$id) || anyDuplicated(d$id) || any(!d$id %in% s$reported$id)) fail()
-    if (any(!names(d) %in% c(setdiff(names(s$reported), "ill"), "stool_positive", if (snapshot) "case_status"))) fail()
-    for (name in setdiff(names(d), c("sex", "case_status", "age", "id", "onset_hours", "report_hour"))) if (!is.logical(d[[name]])) fail()
-    for (name in intersect(names(d), c("age", "id", "onset_hours", "report_hour"))) if (!is.numeric(d[[name]]) || any(!is.na(d[[name]]) & (!is.finite(d[[name]]) | d[[name]] < 0 | d[[name]] > 100000))) fail()
-    if ("sex" %in% names(d) && (!is.character(d$sex) || any(!is.na(d$sex) & !d$sex %in% c("F", "M")))) fail()
-    if (snapshot && (!"case_status" %in% names(d) || !is.character(d$case_status) || anyNA(d$case_status) || any(!d$case_status %in% case_status_levels()))) fail()
+    check(is.data.frame(d) && all(c("id", "on_list") %in% names(d)) && nrow(d) <= nrow(s$reported) &&
+      is.numeric(d$id) && !anyNA(d$id) && !anyDuplicated(d$id) && all(d$id %in% s$reported$id))
+    check(all(names(d) %in% c(collectable_fields(s), if (snapshot) "case_status")))
+    for (name in setdiff(names(d), c("sex", "case_status", names(lowest)))) check(is.logical(d[[name]]))
+    for (name in intersect(names(d), names(lowest))) {
+      x <- d[[name]]
+      check(is.numeric(x) && all(is.na(x) | (is.finite(x) & x >= lowest[[name]] & x <= 100000)))
+    }
+    if ("sex" %in% names(d)) check(is.character(d$sex) && all(is.na(d$sex) | d$sex %in% c("F", "M")))
+    if (snapshot) {
+      check("case_status" %in% names(d) && is.character(d$case_status) && !anyNA(d$case_status) &&
+        all(d$case_status %in% case_status_levels()))
+    }
   }
-  for (field in c("queue", "evidence", "log", "chats", "checkpoints", "actions", "case_defs", "downloads", "checks", "media_events", "media_responses", "instructor_reviews")) if (!entries(s[[field]])) fail()
-  for (field in c("completed", "fired_events", "interviewed")) if (!strings(s[[field]])) fail()
+  lists <- c(
+    "queue", "evidence", "log", "chats", "checkpoints", "actions", "case_defs", "downloads", "checks",
+    "media_events", "media_responses", "instructor_reviews"
+  )
+  for (field in lists) check(entries(s[[field]]))
+  for (field in c("completed", "fired_events", "interviewed")) check(strings(s[[field]]))
   contacts <- c("organizer", "cook", paste0("guest_", s$reported$id))
-  if (any(!s$interviewed %in% contacts) || anyDuplicated(s$interviewed) || length(s$interviewed) > s$sc$interviews$max) fail()
-  if (length(s$chats) && (is.null(names(s$chats)) || anyDuplicated(names(s$chats)) || any(!names(s$chats) %in% contacts))) fail()
-  table(s$collected); definition(s$definition); evidence(s$evidence)
+  check(all(s$interviewed %in% contacts) && !anyDuplicated(s$interviewed) && length(s$interviewed) <= s$sc$interviews$max)
+  if (length(s$chats)) check(!is.null(names(s$chats)) && !anyDuplicated(names(s$chats)) && all(names(s$chats) %in% contacts))
+  table(s$collected)
+  definition(s$definition)
+  evidence(s$evidence)
   for (d in s$case_defs) definition(d)
-  if (!text(s$recommendation, TRUE)) fail()
-  if (!is.null(s$retry) && (!shape(s$retry, c("checkpoint", "reason", "revision")) || !number(s$retry$checkpoint, 1, length(s$checkpoints)) || !text(s$retry$reason) || !text(s$retry$revision))) fail()
+  check(text(s$recommendation, TRUE))
+  if (!is.null(s$retry)) {
+    check(shape(s$retry, c("checkpoint", "reason", "revision")) &&
+      number(s$retry$checkpoint, 1, length(s$checkpoints)) && text(s$retry$reason) && text(s$retry$revision))
+  }
   for (job in s$queue) {
-    if (!shape(job, c("id", "label", "requested", "due"), c("people", "fields", "audience")) || !text(job$id) || !text(job$label) || !number(job$requested) || !number(job$due)) fail()
-    if (job$id == "team_interviews" && (!is.numeric(job$people) || anyNA(job$people) || anyDuplicated(job$people) || !strings(job$fields) || !text(job$audience) || !job$audience %in% c("all", "ill"))) fail()
+    check(shape(job, c("id", "label", "requested", "due"), c("people", "fields", "audience")) &&
+      text(job$id) && text(job$label) && number(job$requested) && number(job$due))
+    if (job$id == "team_interviews") {
+      check(is.numeric(job$people) && !anyNA(job$people) && !anyDuplicated(job$people) && strings(job$fields) &&
+        text(job$audience) && job$audience %in% c("all", "ill"))
+    }
   }
   for (chat in s$chats) {
-    if (!entries(chat)) fail()
-    for (entry in chat) if (!shape(entry, c("time", "question", "topics", "reply"), c("dialogue_status", "authored_reply")) || !number(entry$time, max = s$clock) || !text(entry$question) || !strings(entry$topics) || !text(entry$reply) || (!is.null(entry$dialogue_status) && !text(entry$dialogue_status)) || (!is.null(entry$authored_reply) && !text(entry$authored_reply))) fail()
+    check(entries(chat))
+    for (entry in chat) {
+      check(shape(entry, c("time", "question", "topics", "reply"), c("dialogue_status", "authored_reply")) &&
+        number(entry$time, max = s$clock) && text(entry$question) && strings(entry$topics) && text(entry$reply) &&
+        text(entry$dialogue_status, TRUE) && text(entry$authored_reply, TRUE))
+    }
   }
+  reasoning <- c("stage", "suspect", "confidence", "supporting", "against", "change", "action")
   for (cp in s$checkpoints) {
-    if (!shape(cp, c("time", "stage", "suspect", "confidence", "supporting", "against", "change", "action", "evidence")) || !number(cp$time, max = s$clock) || !all(vapply(cp[c("stage", "suspect", "confidence", "supporting", "against", "change", "action")], text, logical(1)))) fail()
+    check(shape(cp, c("time", reasoning, "evidence")) && number(cp$time, max = s$clock) &&
+      all(vapply(cp[reasoning], text, logical(1))))
     evidence(cp$evidence)
   }
+  action_ids <- vapply(s$sc$actions, `[[`, character(1), "id")
   for (action in s$actions) {
-    if (!shape(action, c("time", "id", "label", "reason", "justified", "evidence")) || !number(action$time, max = s$clock) || !text(action$id) || !action$id %in% vapply(s$sc$actions, `[[`, character(1), "id") || !text(action$label) || !text(action$reason) || !flag(action$justified)) fail()
+    check(shape(action, c("time", "id", "label", "reason", "justified", "evidence")) &&
+      number(action$time, max = s$clock) && text(action$id) && action$id %in% action_ids &&
+      text(action$label) && text(action$reason) && flag(action$justified))
     evidence(action$evidence)
   }
   for (snap in s$downloads) {
-    if (!shape(snap, c("id", "time", "definition", "data")) || !number(snap$id, 1) || snap$id != floor(snap$id) || !number(snap$time, max = s$clock)) fail()
-    definition(snap$definition); table(snap$data, TRUE)
+    check(shape(snap, c("id", "time", "definition", "data")) && number(snap$id, 1) && snap$id == floor(snap$id) &&
+      number(snap$time, max = s$clock))
+    definition(snap$definition)
+    table(snap$data, TRUE)
   }
-  for (check in s$checks) if (!shape(check, c("snapshot", "food", "result")) || !number(check$snapshot, 1) || !check$snapshot %in% vapply(s$downloads, `[[`, numeric(1), "id") || !text(check$food) || !check$food %in% names(food_labels(s$sc)) || !shape(check$result, c("ok", "message")) || !flag(check$result$ok) || !text(check$result$message)) fail()
-  for (entry in s$log) if (!shape(entry, c("time", "type", "detail")) || !number(entry$time, max = s$clock) || !text(entry$type)) fail()
-  for (e in s$media_events) if (!shape(e, c("id", "type", "at_hour", "source", "text")) || !text(e$id) || !text(e$type) || e$type != "media" || !number(e$at_hour, max = s$clock) || !text(e$source) || !text(e$text)) fail()
+  snapshot_ids <- vapply(s$downloads, function(snap) as.numeric(snap$id), numeric(1))
+  for (item in s$checks) {
+    check(shape(item, c("snapshot", "food", "result")) && number(item$snapshot, 1) && item$snapshot %in% snapshot_ids &&
+      text(item$food) && item$food %in% names(food_labels(s$sc)) && shape(item$result, c("ok", "message")) &&
+      flag(item$result$ok) && text(item$result$message))
+  }
+  for (entry in s$log) {
+    check(shape(entry, c("time", "type", "detail")) && number(entry$time, max = s$clock) && text(entry$type))
+  }
+  for (e in s$media_events) {
+    check(shape(e, media_event_fields()) && text(e$id) && text(e$type) && e$type == "media" &&
+      number(e$at_hour, max = s$clock) && text(e$source) && text(e$text))
+  }
+  media_ids <- vapply(s$media_events, `[[`, character(1), "id")
   for (e in s$media_responses) {
-    if (!shape(e, c("time", "id", "text", "evidence_ids", "evidence")) || !text(e$id) || !e$id %in% vapply(s$media_events, `[[`, character(1), "id") || !number(e$time, max = s$clock) || !text(e$text) || !is.numeric(e$evidence_ids) || anyNA(e$evidence_ids) || any(e$evidence_ids != floor(e$evidence_ids))) fail()
+    check(shape(e, c("time", "id", "text", "evidence_ids", "evidence")) && text(e$id) && e$id %in% media_ids &&
+      number(e$time, max = s$clock) && text(e$text) && is.numeric(e$evidence_ids) && !anyNA(e$evidence_ids) &&
+      all(e$evidence_ids == floor(e$evidence_ids)))
     evidence(e$evidence)
   }
-  for (review in s$instructor_reviews) if (!shape(review, c("time", "criterion", "status", "reason")) || !number(review$time, max = s$clock) || !text(review$criterion) || !text(review$status) || !text(review$reason)) fail()
-  invisible(TRUE)
-}
-
-validate_saved_guide <- function(g) {
-  if (!is.list(g) || any(!names(g) %in% c("step", "furthest", "drafts", "current_fields", "recommendation_draft"))) stop("Invalid saved guide.")
-  for (field in intersect(names(g), c("step", "furthest"))) {
-    x <- g[[field]]
-    if (!is.numeric(x) || length(x) != 1 || is.na(x) || !is.finite(x) || x != floor(x) || x < 1 || x > 10) stop("Invalid saved guide step.")
+  for (review in s$instructor_reviews) {
+    check(shape(review, c("time", "criterion", "status", "reason")) && number(review$time, max = s$clock) &&
+      text(review$criterion) && text(review$status) && text(review$reason))
   }
-  if (!is.null(g$step) && !is.null(g$furthest) && g$step > g$furthest) stop("Invalid saved guide progress.")
-  fields <- function(x) {
-    if (!is.list(x) || any(!names(x) %in% checkpoint_fields()) || any(!vapply(x, function(v) is.null(v) || (is.character(v) && length(v) == 1 && !is.na(v) && nchar(v) <= 20000), logical(1)))) stop("Invalid saved guide draft.")
-  }
-  if (!is.null(g$current_fields)) fields(g$current_fields)
-  if (!is.null(g$drafts)) {
-    if (!is.list(g$drafts) || any(!names(g$drafts) %in% c("2", "4", "8"))) stop("Invalid saved checkpoint draft.")
-    for (draft in g$drafts) fields(draft)
-  }
-  if (!is.null(g$recommendation_draft) && (!is.character(g$recommendation_draft) || length(g$recommendation_draft) != 1 || is.na(g$recommendation_draft) || nchar(g$recommendation_draft) > 20000)) stop("Invalid recommendation draft.")
   invisible(TRUE)
 }

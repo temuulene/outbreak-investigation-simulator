@@ -147,6 +147,7 @@ test_that("a rewrite deadline falls back without losing recognized follow-up top
 })
 
 test_that("writing and review use separate scoped chats", {
+  testthat::skip_if_not_installed("ellmer")
   calls <- list(); payloads <- list()
   factory <- function(provider, model, prompt, ...) {
     index <- length(calls) + 1L

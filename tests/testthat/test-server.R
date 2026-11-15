@@ -33,9 +33,13 @@ test_that("guided journey completes checkpoints in order and reaches the debrief
     expect_equal(nrow(s()$collected), 0)
     session$setInputs(collection_done = 1)
     expect_equal(guide_step(), 7L)
-    expect_equal(nrow(s()$collected), 60)
+    # Pat was asked about walk-ins, so all 60 are on the plan; those who answer are recorded.
+    answered <- sum(s()$reported$responds)
+    expect_lt(answered, 60)
+    expect_equal(nrow(s()$collected), answered)
+    expect_match(tail(s()$evidence, 1)[[1]]$finding, paste(answered, "of 60 guests on the plan answered"), fixed = TRUE)
     session$setInputs(freeze = 1)
-    expect_equal(nrow(snapshot()$data), 60)
+    expect_equal(nrow(snapshot()$data), answered)
     expect_match(output$case_description$html, "cases under your definition", fixed = TRUE)
     session$setInputs(curve_interval = "6")
     expect_match(output$epi_curve$alt, "Epidemic curve in 6-hour intervals", fixed = TRUE)
@@ -112,10 +116,10 @@ test_that("optional workflows preserve session evidence and navigation", {
 })
 
 test_that("resume navigation rejects malformed fields before state changes", {
-  expect_error(validate_guide_restore(list(step = NaN)), "step")
-  expect_error(validate_guide_restore(list(step = 3, furthest = 2)), "order")
-  expect_error(validate_guide_restore(list(current_fields = list(suspect = list("bad")))), "draft")
-  expect_equal(validate_guide_restore(list(step = 2))$furthest, 2L)
+  expect_error(validate_guide(list(step = NaN)), "step")
+  expect_error(validate_guide(list(step = 3, furthest = 2)), "order")
+  expect_error(validate_guide(list(current_fields = list(suspect = list("bad")))), "draft")
+  expect_equal(validate_guide(list(step = 2))$furthest, 2L)
 })
 
 test_that("both conversation interfaces build without credentials", {
@@ -124,6 +128,7 @@ test_that("both conversation interfaces build without credentials", {
   library(shiny)
   library(bslib)
   options(sass.cache = FALSE)
+  testthat::skip_if_not_installed("shinychat")
   withr::local_envvar(FIELDNOTES_CHAT_UI = "shinychat")
   html <- as.character(app_ui())
   expect_match(html, "conversation")
@@ -194,6 +199,7 @@ test_that("widget text submission follows the same interview boundary", {
   old <- setwd(root)
   on.exit(setwd(old), add = TRUE)
   library(shiny)
+  testthat::skip_if_not_installed("shinychat")
   withr::local_envvar(FIELDNOTES_CHAT_UI = "shinychat")
   shiny::testServer(app_server, {
     session$setInputs(character = "organizer", topic = "auto", conversation_user_input = list("menu"))

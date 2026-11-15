@@ -1,6 +1,6 @@
 test_that("catalog validates scenarios and stable reference seeds", {
   catalog <- scenario_catalog(file.path(root, "scenarios"))
-  expect_setequal(catalog$id, c("potluck-01", "potluck-02"))
+  expect_setequal(catalog$id, c("potluck-01", "potluck-02", "potluck-03"))
   for (id in catalog$id) {
     s <- start_session(id, directory = file.path(root, "scenarios"))
     expect_true(teaching_signal(s))
@@ -29,7 +29,7 @@ test_that("intermediate scenario illustrates confounding using reported follow-u
 
 test_that("random scenarios pass bounded teaching selection", {
   set.seed(91)
-  for (id in c("potluck-01", "potluck-02")) {
+  for (id in c("potluck-01", "potluck-02", "potluck-03")) {
     s <- start_session(id, randomize = TRUE, directory = file.path(root, "scenarios"))
     expect_true(teaching_signal(s))
   }

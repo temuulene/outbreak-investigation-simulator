@@ -69,7 +69,10 @@ test_that("lab results work before collection and only classify sampled guests",
   s <- request_task(s, "stool_samples")
   s <- advance_time(s, 49)
   expect_equal(nrow(s$collected), 3)
-  expect_true(all(s$collected$stool_positive))
+  # Culture misses some true cases; every sampled guest still gets a result.
+  expect_false(anyNA(s$collected$stool_positive))
+  expect_identical(s$collected$stool_positive, s$truth$stool_detectable[match(s$collected$id, s$truth$id)])
+  expect_true(any(s$collected$stool_positive))
   expect_true(all(classify_cases(s$collected) == "Unknown"))
   expect_true(any(vapply(s$evidence, function(e) grepl(s$sc$pathogen$name, e$finding, fixed = TRUE), logical(1))))
   s <- request_task(new_state(scenario()), "hold_leftovers")
@@ -87,9 +90,11 @@ test_that("plan choices restrict who and what gets collected", {
   s <- request_task(s, "team_interviews", "ill", c("symptoms", "onset"), "chicken_salad")
   s <- advance_time(s, 25)
   expect_false("chicken_salad" %in% names(s$collected))
-  expect_true(all(s$reported$ill[match(s$collected$id, s$reported$id)]))
+  expect_true(all(has_reported(s)[match(s$collected$id, s$reported$id)]))
   complete <- full_plan()
-  expect_equal(nrow(complete$collected), 60)
+  # Everyone is on the plan once walk-ins are known; only those who answer are recorded.
+  expect_setequal(complete$collected$id, complete$reported$id[complete$reported$responds])
+  expect_lt(nrow(complete$collected), 60)
   expect_true(all(names(food_labels(complete$sc)) %in% names(complete$collected)))
 })
 
