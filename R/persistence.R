@@ -16,13 +16,16 @@ decode_session_value <- function(x, depth = 0L) {
   if (type == "null") return(NULL)
   if (type == "frame") {
     columns <- lapply(x$columns, decode_session_value, depth = depth + 1L)
-    if (!length(columns) || is.null(names(columns)) || anyDuplicated(names(columns)) || any(vapply(columns, is.list, logical(1))) || length(unique(lengths(columns))) != 1) stop("Invalid saved data frame.")
+    frame_ok <- length(columns) && !is.null(names(columns)) && !anyDuplicated(names(columns)) &&
+      !any(vapply(columns, is.list, logical(1))) && length(unique(lengths(columns))) == 1
+    if (!frame_ok) stop("Invalid saved data frame.")
     return(as.data.frame(columns, stringsAsFactors = FALSE))
   }
   if (type == "list") {
     result <- lapply(x$values, decode_session_value, depth = depth + 1L)
   } else {
-    values <- vapply(x$values, function(v) if (is.null(v)) NA_character_ else {
+    values <- vapply(x$values, function(v) {
+      if (is.null(v)) return(NA_character_)
       if (!is.character(v) || length(v) != 1) stop("Invalid session scalar.")
       v
     }, character(1), USE.NAMES = FALSE)
@@ -57,7 +60,9 @@ restore_session <- function(path, directory = "scenarios") {
   if (!file.exists(path) || is.na(file.info(path)$size) || file.info(path)$size > 5000000) {
     stop("Session file is missing or exceeds 5 MB.")
   }
-  record <- tryCatch(jsonlite::read_json(path, simplifyVector = FALSE), error = function(e) stop("Invalid session JSON."))
+  record <- tryCatch(
+    jsonlite::read_json(path, simplifyVector = FALSE), error = function(e) stop("Invalid session JSON.")
+  )
   fields <- c("format", "version", "scenario", "seed", "state", "guide")
   if (!is.list(record) || anyDuplicated(names(record)) || !setequal(names(record), fields) ||
       !identical(record$format, "fieldnotes-session") || !identical(record$version, 1L)) {
@@ -150,7 +155,8 @@ validate_session_shapes <- function(s) {
   evidence <- function(x) {
     check(entries(x))
     for (e in x) {
-      check(shape(e, c("time", "source", "finding")) && number(e$time, max = s$clock) && text(e$source) && text(e$finding))
+      check(shape(e, c("time", "source", "finding")) && number(e$time, max = s$clock) && text(e$source) &&
+        text(e$finding))
     }
   }
   definition <- function(d) {
@@ -182,8 +188,11 @@ validate_session_shapes <- function(s) {
   for (field in lists) check(entries(s[[field]]))
   for (field in c("completed", "fired_events", "interviewed")) check(strings(s[[field]]))
   contacts <- c("organizer", "cook", paste0("guest_", s$reported$id))
-  check(all(s$interviewed %in% contacts) && !anyDuplicated(s$interviewed) && length(s$interviewed) <= s$sc$interviews$max)
-  if (length(s$chats)) check(!is.null(names(s$chats)) && !anyDuplicated(names(s$chats)) && all(names(s$chats) %in% contacts))
+  check(all(s$interviewed %in% contacts) && !anyDuplicated(s$interviewed) &&
+    length(s$interviewed) <= s$sc$interviews$max)
+  if (length(s$chats)) {
+    check(!is.null(names(s$chats)) && !anyDuplicated(names(s$chats)) && all(names(s$chats) %in% contacts))
+  }
   table(s$collected)
   definition(s$definition)
   evidence(s$evidence)

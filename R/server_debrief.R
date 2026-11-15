@@ -62,7 +62,10 @@ server_debrief <- function(input, output, session, app) {
       p(profile$caveat),
       lapply(seq_len(nrow(criteria)), function(i) {
         row <- criteria[i, ]
-        div(class = "profile-row", h4(row$label), strong(row$status), p(row$feedback), p(class = "small-note", row$evidence))
+        div(
+          class = "profile-row", h4(row$label), strong(row$status), p(row$feedback),
+          p(class = "small-note", row$evidence)
+        )
       }),
       disclosure(
         "Facilitator review",

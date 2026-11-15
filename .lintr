@@ -1,0 +1,19 @@
+linters: list(
+    line_length_linter(120),
+    assignment_linter(),
+    brace_linter(allow_single_line = TRUE),
+    commas_linter(),
+    equals_na_linter(),
+    function_left_parentheses_linter(),
+    infix_spaces_linter(),
+    quotes_linter(),
+    semicolon_linter(),
+    seq_linter(),
+    spaces_left_parentheses_linter(),
+    T_and_F_symbol_linter(),
+    trailing_blank_lines_linter(),
+    trailing_whitespace_linter(),
+    vector_logic_linter(),
+    whitespace_linter()
+  )
+encoding: "UTF-8"

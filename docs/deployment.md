@@ -23,6 +23,12 @@ Set environment variables before starting R (or in private hosting secrets):
   model on that service first.
 - `FIELDNOTES_CHAT_UI=shinychat` enables the optional conversation widget.
 
+`ellmer` and `shinychat` are optional packages. The scripted experience runs
+without them: with either missing, assisted replies fall back to authored text
+and the built-in conversation view is used. Both remain in `renv.lock` and the
+Connect manifest so the hosted app can enable them. To deploy without them,
+remove them and regenerate the lockfile and manifest under R 4.6.0.
+
 The provider receives the question, up to four recent exchanges with the selected
 contact, and the canonical answer needed for rewriting and review. Other contacts,
 reported tables and the hidden answer key stay in R. Use fictional investigation
@@ -81,6 +87,11 @@ Rscript scripts/write-connect-manifest.R
 The generator includes only the app, dependency files, R code, static assets,
 scenario definitions, and starter analysis. Git history, tests, documents,
 artifacts, saved learner sessions, and local keys are excluded.
+
+The workflow runs on a pinned `ubuntu-24.04` image. The manifest records the
+package repository for that Ubuntu release, so a moving `ubuntu-latest` image
+makes it drift. A separate job runs `scripts/lint.R`; `lintr` is installed there
+and is not part of the lockfile.
 
 GitHub Actions tests R 4.6.0 and 4.6.1, initializes the Shiny app, regenerates the
 manifest under R 4.6.0, and checks for drift. If code or dependencies change,

@@ -1,5 +1,12 @@
+# The collected records in a fixed column order, whatever order fields were gathered in:
+# guest details, symptoms, timing, care, laboratory result, then foods in menu order.
 line_list <- function(s) {
   data <- s$collected
+  fields <- c(
+    "id", "on_list", domain_fields(c("demographics", "symptoms", "onset", "health_care_visits")),
+    "stool_positive", names(food_labels(s$sc))
+  )
+  data <- data[c(intersect(fields, names(data)), setdiff(names(data), fields))]
   data$case_status <- classify_cases(data, s$definition)
   data
 }
@@ -49,7 +56,8 @@ format_rates <- function(rates, labels = NULL, first = "Food") {
   ratio <- function(x) ifelse(is.na(x), "Not estimable", ifelse(is.infinite(x), "Infinite", sprintf("%.2f", x)))
   percent <- function(x) ifelse(is.na(x), "Not estimable", sprintf("%.0f%%", 100 * x))
   interval <- ifelse(is.na(rates$rr_lower), "", sprintf(" (%.2f to %.2f)", rates$rr_lower, rates$rr_upper))
-  name <- if (is.null(labels)) rates$food else unname(ifelse(rates$food %in% names(labels), labels[rates$food], rates$food))
+  name <- rates$food
+  if (!is.null(labels)) name <- unname(ifelse(name %in% names(labels), labels[name], name))
   table <- data.frame(
     name,
     paste0(rates$exposed_cases, " / ", rates$exposed_total), percent(rates$attack_rate_exposed),
@@ -71,12 +79,19 @@ format_rates <- function(rates, labels = NULL, first = "Food") {
 check_calculation <- function(snapshot, food, exposed, unexposed, rr, tolerance = .015, rr_tolerance = .05) {
   correct <- attack_rates(snapshot, food)
   expected <- unlist(correct[c("attack_rate_exposed", "attack_rate_unexposed", "relative_risk")], use.names = FALSE)
-  if (any(is.na(expected))) return(list(ok = FALSE, message = "Not estimable from this snapshot: check missing fields and denominators."))
+  if (any(is.na(expected))) {
+    return(list(ok = FALSE, message = "Not estimable from this snapshot: check missing fields and denominators."))
+  }
   number <- function(x) if (is.numeric(x) && length(x) == 1L) x else NA_real_
   supplied <- c(number(exposed), number(unexposed), number(rr))
-  near <- function(x, target, tol) (is.infinite(target) && is.infinite(x) && sign(target) == sign(x)) ||
-    (is.finite(target) && is.finite(x) && abs(x - target) <= tol)
-  ok <- c(near(supplied[1], expected[1], tolerance), near(supplied[2], expected[2], tolerance), near(supplied[3], expected[3], rr_tolerance))
+  near <- function(x, target, tol) {
+    (is.infinite(target) && is.infinite(x) && sign(target) == sign(x)) ||
+      (is.finite(target) && is.finite(x) && abs(x - target) <= tol)
+  }
+  ok <- c(
+    near(supplied[1], expected[1], tolerance), near(supplied[2], expected[2], tolerance),
+    near(supplied[3], expected[3], rr_tolerance)
+  )
   rounded <- FALSE
   if (!ok[3] && all(ok[1:2]) && is.finite(supplied[3]) && supplied[2] > 0) {
     # A ratio of correctly rounded attack rates is the right method, with less precision.
@@ -84,21 +99,48 @@ check_calculation <- function(snapshot, food, exposed, unexposed, rr, tolerance 
     ok[3] <- rounded
   }
   if (all(ok)) {
-    return(list(ok = TRUE, message = if (rounded) sprintf(
-      "Your method is right. Dividing rounded attack rates gave %.2f; the unrounded counts give %.2f. Round only at the end.",
-      supplied[3], expected[3]) else "All three calculations agree with your frozen line list."))
+    message <- if (rounded) {
+      sprintf(
+        paste(
+          "Your method is right. Dividing rounded attack rates gave %.2f;",
+          "the unrounded counts give %.2f. Round only at the end."
+        ),
+        supplied[3], expected[3]
+      )
+    } else {
+      "All three calculations agree with your frozen line list."
+    }
+    return(list(ok = TRUE, message = message))
   }
   slip <- function(value, cases, total) {
     all_cases <- correct$exposed_cases + correct$unexposed_cases
-    if (is.finite(value) && value > 1 && near(value / 100, cases / total, tolerance)) return("Enter a proportion from 0 to 1, not a percentage.")
-    if (all_cases > 0 && near(value, cases / all_cases, tolerance)) return("That looks like this group's share of all cases. An attack rate divides the group's cases by everyone in the group, ill or well.")
+    if (is.finite(value) && value > 1 && near(value / 100, cases / total, tolerance)) {
+      return("Enter a proportion from 0 to 1, not a percentage.")
+    }
+    if (all_cases > 0 && near(value, cases / all_cases, tolerance)) {
+      return(paste(
+        "That looks like this group's share of all cases.",
+        "An attack rate divides the group's cases by everyone in the group, ill or well."
+      ))
+    }
     "Count cases and all classified guests in this group; leave out unknown and excluded records."
   }
   notes <- c(
-    if (!ok[1]) paste("Attack rate among those who ate it:", slip(supplied[1], correct$exposed_cases, correct$exposed_total)),
-    if (!ok[2]) paste("Attack rate among those who did not:", slip(supplied[2], correct$unexposed_cases, correct$unexposed_total)),
-    if (!ok[3]) "Relative risk: divide the exposed attack rate by the unexposed attack rate. Use Inf when no unexposed guest is a case.")
-  list(ok = FALSE, message = paste(c(sprintf("%d of 3 values agree with your frozen line list.", sum(ok)), notes), collapse = " "))
+    if (!ok[1]) {
+      paste("Attack rate among those who ate it:", slip(supplied[1], correct$exposed_cases, correct$exposed_total))
+    },
+    if (!ok[2]) {
+      paste("Attack rate among those who did not:", slip(supplied[2], correct$unexposed_cases, correct$unexposed_total))
+    },
+    if (!ok[3]) {
+      paste(
+        "Relative risk: divide the exposed attack rate by the unexposed attack rate.",
+        "Use Inf when no unexposed guest is a case."
+      )
+    }
+  )
+  agreement <- sprintf("%d of 3 values agree with your frozen line list.", sum(ok))
+  list(ok = FALSE, message = paste(c(agreement, notes), collapse = " "))
 }
 
 write_workbook <- function(data, path, sc) {
@@ -113,7 +155,10 @@ write_workbook <- function(data, path, sc) {
     ),
     "Fill columns B:E with counts from the line list, separately for each exposure.",
     "F:H calculate attack rates and relative risk. NE means not estimable; Inf means zero unexposed cases.",
-    "Discuss missing data, non-response, recall error, and small numbers. An association alone does not establish cause."
+    paste(
+      "Discuss missing data, non-response, recall error, and small numbers.",
+      "An association alone does not establish cause."
+    )
   )))
   openxlsx::writeData(wb, "Line list", export_line_list(data, sc))
   foods <- intersect(names(food_labels(sc)), names(data))
@@ -141,7 +186,9 @@ write_workbook <- function(data, path, sc) {
 }
 
 stratified_rates <- function(data, exposure, stratifier) {
-  if (length(exposure) != 1 || length(stratifier) != 1 || exposure == stratifier) stop("Choose two different exposures.")
+  if (length(exposure) != 1 || length(stratifier) != 1 || exposure == stratifier) {
+    stop("Choose two different exposures.")
+  }
   if (!stratifier %in% names(data)) stop("Collect the stratifying exposure first.")
   dplyr::bind_rows(lapply(c(FALSE, TRUE), function(level) {
     subset <- data[which(!is.na(data[[stratifier]]) & data[[stratifier]] == level), , drop = FALSE]
@@ -155,12 +202,17 @@ stratified_rates <- function(data, exposure, stratifier) {
 # Mantel-Haenszel pooled risk ratio with a Greenland-Robins interval. `strata`
 # holds one attack_rates() row per stratum.
 mantel_haenszel_rr <- function(strata) {
-  a <- strata$exposed_cases; n1 <- strata$exposed_total
-  c <- strata$unexposed_cases; n0 <- strata$unexposed_total
-  keep <- n1 + n0 > 0
-  a <- a[keep]; n1 <- n1[keep]; c <- c[keep]; n0 <- n0[keep]; n <- n1 + n0
-  numerator <- sum(a * n0 / n); denominator <- sum(c * n1 / n)
-  if (!length(n) || numerator == 0 || denominator == 0) return(c(rr = NA_real_, lower = NA_real_, upper = NA_real_))
+  keep <- strata$exposed_total + strata$unexposed_total > 0
+  a <- strata$exposed_cases[keep]
+  n1 <- strata$exposed_total[keep]
+  c <- strata$unexposed_cases[keep]
+  n0 <- strata$unexposed_total[keep]
+  n <- n1 + n0
+  numerator <- sum(a * n0 / n)
+  denominator <- sum(c * n1 / n)
+  if (!length(n) || numerator == 0 || denominator == 0) {
+    return(c(rr = NA_real_, lower = NA_real_, upper = NA_real_))
+  }
   rr <- numerator / denominator
   se <- sqrt(sum((n1 * n0 * (a + c) - a * c * n) / n^2) / (numerator * denominator))
   c(rr = rr, lower = exp(log(rr) - 1.96 * se), upper = exp(log(rr) + 1.96 * se))
@@ -178,12 +230,16 @@ stratified_summary <- function(data, exposure, stratifier) {
 describe_cases <- function(data) {
   cases <- data[data$case_status %in% "Case", , drop = FALSE]
   symptoms <- intersect(domain_fields("symptoms"), names(cases))
-  result <- list(cases = nrow(cases), symptoms = data.frame(symptom = character(), cases = integer(), asked = integer()))
+  none <- data.frame(symptom = character(), cases = integer(), asked = integer())
+  result <- list(cases = nrow(cases), symptoms = none)
   if (!nrow(cases)) return(result)
   result$symptoms <- data.frame(symptom = gsub("_", " ", symptoms),
     cases = vapply(symptoms, function(f) sum(cases[[f]], na.rm = TRUE), numeric(1)),
     asked = vapply(symptoms, function(f) sum(!is.na(cases[[f]])), numeric(1)), row.names = NULL)
-  spread <- function(x) if (all(is.na(x))) NULL else c(min = min(x, na.rm = TRUE), median = stats::median(x, na.rm = TRUE), max = max(x, na.rm = TRUE))
+  spread <- function(x) {
+    if (all(is.na(x))) return(NULL)
+    c(min = min(x, na.rm = TRUE), median = stats::median(x, na.rm = TRUE), max = max(x, na.rm = TRUE))
+  }
   if ("onset_hours" %in% names(cases)) result$incubation <- spread(cases$onset_hours)
   if ("age" %in% names(cases)) result$age <- spread(cases$age)
   if ("sex" %in% names(cases) && any(!is.na(cases$sex))) result$sex <- table(cases$sex)
@@ -216,7 +272,11 @@ plot_epi_curve <- function(curve) {
   graphics::axis(1, at = at, labels = curve$breaks[at + 1])
   if (curve$breaks[1] < 0) graphics::abline(v = which(curve$breaks == 0) - 1, lty = 2, col = "#62736b")
   graphics::axis(2, at = unique(round(pretty(c(0, max(1, colSums(counts)))))), las = 1)
-  if (any(counts[2, ] > 0)) graphics::legend("topright", legend = rownames(counts), fill = c("#176956", "#c9d6cd"), border = "white", bty = "n", cex = .85)
+  if (any(counts[2, ] > 0)) {
+    graphics::legend(
+      "topright", legend = rownames(counts), fill = c("#176956", "#c9d6cd"), border = "white", bty = "n", cex = .85
+    )
+  }
 }
 
 epi_curve_alt <- function(curve) {
@@ -227,6 +287,7 @@ epi_curve_alt <- function(curve) {
       "Epidemic curve in %g-hour intervals: %d cases and %d other people with a reported onset.",
       "The tallest bar is %d people at %g to %g hours after the meal; onsets span %g to %g hours."
     ),
-    curve$width, sum(curve$counts[1, ]), sum(curve$counts[2, ]), totals[peak], curve$breaks[peak], curve$breaks[peak + 1],
+    curve$width, sum(curve$counts[1, ]), sum(curve$counts[2, ]), totals[peak], curve$breaks[peak],
+    curve$breaks[peak + 1],
     curve$breaks[min(which(totals > 0))], curve$breaks[max(which(totals > 0)) + 1])
 }

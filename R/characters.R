@@ -27,9 +27,13 @@ classify_topics <- function(question) {
       "\\b(?:when(?: and where)?|where)\\s+(?:was|did)\\s+(?:the\\s+)?(?:potluck|event|meal|gathering)\\b|",
       "\\b(?:overview|background)\\s+(?:of|on|about)\\s+(?:the\\s+)?(?:potluck|event|meal|gathering)\\b"
     ),
-    menu = "\\b(?:menus?|foods?|eat(?:en|ing)?|ate|drinks?|beverages?|serv(?:e|ed|ing)|dishes|dinner|lunch|breakfast)\\b",
+    menu = paste0(
+      "\\b(?:menus?|foods?|eat(?:en|ing)?|ate|drinks?|beverages?|serv(?:e|ed|ing)|dishes|dinner|lunch|",
+      "breakfast)\\b"
+    ),
     food_sources = paste0(
-      "\\b(?:who|which (?:guests?|people|attendees?))\\b[^?!.]{0,60}\\b(?:brought|made|prepared|cooked|provided|supplied|contributed)\\b",
+      "\\b(?:who|which (?:guests?|people|attendees?))\\b[^?!.]{0,60}",
+      "\\b(?:brought|made|prepared|cooked|provided|supplied|contributed)\\b",
       "[^?!.]{0,50}\\b(?:", food_word_pattern(), ")\\b|",
       "\\bwho(?: else)? (?:brought|made|provided|supplied) what\\b|",
       "\\bwho(?: else)? (?:brought|made|prepared|cooked|provided|supplied) (?:it|this|that|them)\\s*[?.!]?\\s*$|",
@@ -39,17 +43,31 @@ classify_topics <- function(question) {
     ),
     guest_list = paste0(
       "\\b(?:rsvp|attend(?:ed|ing|ance|ees?)?|contacts?)\\b|\\b(?:guest|rsvp|attendee|contact) (?:list|names)\\b|",
-      "\\bwho (?:came|was there|were there)\\b|\\blist (?:of )?(?:guests?|people|attendees?|names)\\b|^\\s*list\\s*\\??$"
+      "\\bwho (?:came|was there|were there)\\b|\\blist (?:of )?(?:guests?|people|attendees?|names)\\b|",
+      "^\\s*list\\s*\\??$"
     ),
     walk_ins = paste0(
       "\\bwalk[ -]?ins?\\b|\\b(?:missing|unlisted|uninvited)\\s+(?:guests?|people|attendees?|names)\\b|",
-      "\\b(?:without|didn['’]t|did not) (?:an?\\s+)?rsvp\\b|\\b(?:not on|off|missing from|left off) (?:the\\s+)?(?:guest\\s+|rsvp\\s+)?list\\b|",
+      "\\b(?:without|didn['’]t|did not) (?:an?\\s+)?rsvp\\b|",
+      "\\b(?:not on|off|missing from|left off) (?:the\\s+)?(?:guest\\s+|rsvp\\s+)?list\\b|",
       "\\b(?:anyone|who) else (?:came|attended|was there)\\b|\\b(?:is|was) (?:the )?(?:guest )?list complete\\b"
     ),
-    leftovers = "\\bleft[ -]?overs?\\b|\\bleft over\\b|\\b(?:fridge|preserv(?:e|ed|ing|ation)|discard(?:ed|ing)?|throw(?:n|ing)? away)\\b",
-    preparation = "\\b(?:prepar(?:e|ed|ing|ation)|made|make|making|cook(?:ed|ing)?|process|recipes?|handl(?:e|ed|ing))\\b|\\bwalk me through\\b",
-    storage = "\\b(?:stor(?:e|ed|ing|age)|cool(?:ed|ing)?|cold|overnight|temperatures?|refrigerat(?:e|ed|ing|ion))\\b|\\bhow (?:was|were) .{0,40}\\bkept\\b",
-    symptoms = "\\b(?:symptoms?|sick|ill(?:ness)?|unwell|feel(?:ing)?|felt|diarrh(?:ea|oea)|fevers?|vomit(?:ed|ing)?|cramps?|nausea|nauseous)\\b|\\b(?:throw(?:ing)?|threw) up\\b|\\bbloody stools?\\b",
+    leftovers = paste0(
+      "\\bleft[ -]?overs?\\b|\\bleft over\\b|",
+      "\\b(?:fridge|preserv(?:e|ed|ing|ation)|discard(?:ed|ing)?|throw(?:n|ing)? away)\\b"
+    ),
+    preparation = paste0(
+      "\\b(?:prepar(?:e|ed|ing|ation)|made|make|making|cook(?:ed|ing)?|process|recipes?|handl(?:e|ed|ing)|",
+      "re-?heat(?:ed|ing)?|warm(?:ed|ing)?)\\b|\\bwalk me through\\b"
+    ),
+    storage = paste0(
+      "\\b(?:stor(?:e|ed|ing|age)|cool(?:ed|ing)?|cold|overnight|temperatures?|refrigerat(?:e|ed|ing|ion))\\b|",
+      "\\bhow (?:was|were) .{0,40}\\bkept\\b"
+    ),
+    symptoms = paste0(
+      "\\b(?:symptoms?|sick|ill(?:ness)?|unwell|feel(?:ing)?|felt|diarrh(?:ea|oea)|fevers?|vomit(?:ed|ing)?|",
+      "cramps?|nausea|nauseous)\\b|\\b(?:throw(?:ing)?|threw) up\\b|\\bbloody stools?\\b"
+    ),
     onset = "\\b(?:when|onset|start(?:ed|ing)?|times?|began|begin)\\b|\\bhow long after\\b",
     demographics = "\\b(?:ages?|old|sex|gender)\\b",
     health_care_visits = "\\b(?:doctors?|hospitals?|care|clinics?|medical|treatment|treated)\\b"
@@ -197,7 +215,9 @@ guest_replies <- function(s, character, topics) {
   fields <- domain_fields(setdiff(topics, "menu"), foods)
   if (length(fields)) s <- collect_records(s, id, fields)
   if ("food_sources" %in% topics) {
-    replies <- c(replies, "I don't know who brought the food. You could ask Pat, the organizer, about the contributors.")
+    replies <- c(
+      replies, "I don't know who brought the food. You could ask Pat, the organizer, about the contributors."
+    )
   }
   if ("menu" %in% topics) {
     had <- paste(labels[eaten], collapse = ", ")

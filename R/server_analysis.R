@@ -136,7 +136,7 @@ server_analysis <- function(input, output, session, app) {
     }
     asked <- summary$symptoms[summary$symptoms$asked > 0, ]
     tagList(
-      p(strong(summary$cases), if (summary$cases == 1) " case under your definition." else " cases under your definition."),
+      p(strong(summary$cases), paste0(if (summary$cases == 1) " case" else " cases", " under your definition.")),
       if (!is.null(summary$incubation)) {
         p(paste0(
           "Time from meal to onset: ", spread(summary$incubation, "hours"),

@@ -64,7 +64,9 @@ read_scenario <- function(path = "scenarios/potluck-01/scenario.yaml") {
       all(vapply(x, proportion, logical(1)))
   }
   if (!symptom_set(sc$pathogen$symptoms)) {
-    fail("pathogen.symptoms must give a proportion for exactly: ", paste(domain_fields("symptoms"), collapse = ", "), ".")
+    fail(
+      "pathogen.symptoms must give a proportion for exactly: ", paste(domain_fields("symptoms"), collapse = ", "), "."
+    )
   }
   bg <- sc$background_illness
   if (!is.null(bg)) {
@@ -79,7 +81,9 @@ read_scenario <- function(path = "scenarios/potluck-01/scenario.yaml") {
     fail("each food needs an id, a label, and p_eaten from 0 to 1.")
   }
   ids <- vapply(sc$foods, `[[`, character(1), "id")
-  if (anyDuplicated(ids) || any(!grepl("^[a-z][a-z0-9_]*$", ids))) fail("food ids must be unique lower-case identifiers.")
+  if (anyDuplicated(ids) || any(!grepl("^[a-z][a-z0-9_]*$", ids))) {
+    fail("food ids must be unique lower-case identifiers.")
+  }
   if (!all(vapply(sc$recall[c("p_forget_item", "p_false_item")], proportion, logical(1)))) {
     fail("recall needs p_forget_item and p_false_item from 0 to 1.")
   }
@@ -92,7 +96,9 @@ read_scenario <- function(path = "scenarios/potluck-01/scenario.yaml") {
     response.p_respond_well = sc$response$p_respond_well, lab.stool_sensitivity = sc$lab$stool_sensitivity,
     lab.food_sensitivity = sc$lab$food_sensitivity
   )
-  for (name in names(options)) if (!optional(options[[name]], proportion)) fail(name, " must be a proportion from 0 to 1.")
+  for (name in names(options)) {
+    if (!optional(options[[name]], proportion)) fail(name, " must be a proportion from 0 to 1.")
+  }
   if (!whole(sc$interviews$max, 1, 100) || !scalar(sc$interviews$minutes_per_topic, 0, 600)) {
     fail("interviews needs a whole-number max and minutes_per_topic.")
   }
@@ -116,7 +122,9 @@ read_scenario <- function(path = "scenarios/potluck-01/scenario.yaml") {
   for (i in seq_along(sc$foods)) {
     f <- sc$foods[[i]]
     if (is.null(f$conditional_on)) next
-    if (!f$conditional_on %in% head(ids, i - 1L)) fail("food ", f$id, ": conditional_on must reference an earlier food.")
+    if (!f$conditional_on %in% head(ids, i - 1L)) {
+      fail("food ", f$id, ": conditional_on must reference an earlier food.")
+    }
     if (!proportion(f$p_if_exposed) || !proportion(f$p_if_unexposed)) {
       fail("food ", f$id, ": p_if_exposed and p_if_unexposed must be proportions.")
     }
@@ -142,7 +150,9 @@ read_scenario <- function(path = "scenarios/potluck-01/scenario.yaml") {
     fail("each task needs an id and a label.")
   }
   task_ids <- vapply(sc$tasks, `[[`, character(1), "id")
-  supported <- c("guest_list", "team_interviews", "food_prep_review", "stool_samples", "hold_leftovers", "leftover_testing")
+  supported <- c(
+    "guest_list", "team_interviews", "food_prep_review", "stool_samples", "hold_leftovers", "leftover_testing"
+  )
   if (anyDuplicated(task_ids) || any(!task_ids %in% supported)) {
     fail("task ids must be unique and one of: ", paste(supported, collapse = ", "), ".")
   }
@@ -173,7 +183,7 @@ food_labels <- function(sc) {
   if (is.null(sc$menu_order)) labels else labels[sc$menu_order]
 }
 
-# A food label as it reads mid-sentence: "the chicken salad sandwiches".
+# A food label as it reads mid-sentence: first letter in lower case.
 dish_phrase <- function(sc, id) {
   label <- food_labels(sc)[[id]]
   paste0(tolower(substr(label, 1, 1)), substring(label, 2))

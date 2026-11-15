@@ -57,7 +57,8 @@ validate_guide <- function(g, steps = guide_steps()) {
   g$current_fields <- fields(g$current_fields)
   if (is.null(g$drafts)) g$drafts <- list()
   decisions <- as.character(which(steps$page == "decision"))
-  keyed <- is.list(g$drafts) && (!length(g$drafts) || (!is.null(names(g$drafts)) && all(names(g$drafts) %in% decisions)))
+  keyed <- is.list(g$drafts) &&
+    (!length(g$drafts) || (!is.null(names(g$drafts)) && all(names(g$drafts) %in% decisions)))
   if (!keyed) stop("Invalid saved guide draft.")
   g$drafts <- lapply(g$drafts, fields)
   if (!is.null(g$recommendation_draft) && !text(g$recommendation_draft)) stop("Invalid saved guide draft.")

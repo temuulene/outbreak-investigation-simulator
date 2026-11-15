@@ -1,0 +1,9 @@
+linters: list(
+    line_length_linter(160),
+    assignment_linter(),
+    equals_na_linter(),
+    T_and_F_symbol_linter(),
+    trailing_blank_lines_linter(),
+    trailing_whitespace_linter()
+  )
+encoding: "UTF-8"

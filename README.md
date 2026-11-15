@@ -29,26 +29,31 @@ For an existing R installation with dependencies already available,
 ## Included
 
 - Seeded, separate truth / reported / collected data and six scripted contacts.
+- Three scenarios: introductory, intermediate (confounding), and advanced (a
+  faster agent and a rumoured food).
+- Realistic imperfections: unrelated illness, cases who never phone in, guests
+  who do not answer, recall error, and laboratory tests that can miss.
 - Free-text topic detection, explicit topic fallback, and independent histories.
 - Preservation deadline, queued results, late reports, and contemporaneous actions.
 - Structured case definitions with live counts and revision reasons.
 - Questionnaire coverage preview; unasked fields remain missing.
-- Frozen CSV and Excel exports, starter R script, and attack-rate/RR checks that
-  name common slips and accept sound rounding.
+- Frozen CSV and Excel exports with onset as a date-time, starter R script, and
+  attack-rate/RR checks that name common slips and accept sound rounding.
 - Case description (symptoms, incubation, age, sex) and an epidemic curve with a
   selectable interval.
-- Stratified comparisons with crude and Mantel-Haenszel adjusted relative risks.
+- Stratified comparisons with crude and Mantel-Haenszel adjusted relative risks,
+  exact p-values, and notes on small cells.
 - Three reasoning checkpoints, five-domain review, optional truth reveal, and retry.
 - JSON session export containing learner-visible evidence, not hidden guest truth.
 
-Choose introductory or intermediate challenges, with optional reviewed random
+Choose an introductory, intermediate, or advanced challenge, with optional reviewed random
 variations. Media requests, stratified comparisons, repeat collection, and a
 transparent facilitator review are available without adding steps to the main flow.
 Save a resumable JSON session from Help & session; resume it on the welcome screen.
 The evidence-only export remains available separately. Resume files contain local
 learner work and are not authenticated assessment records.
 
-Authored dialogue is the default and needs no credentials. Optional Gemini or
+Authored dialogue is the default and needs no credentials or extra packages. Optional Gemini or
 local Ollama assistance understands same-person follow-ups and rephrases scenario
 answers in natural language, with a separate factual review and authored fallback.
 Evidence and investigation state remain engine-authored. Enable the optional chat interface with
@@ -62,6 +67,7 @@ saved on the hosting server between sessions.
 Rscript tests/run.R
 Rscript scripts/review-seed.R
 Rscript scripts/review-scenarios.R
+Rscript scripts/lint.R   # needs the lintr package; rules are in .lintr
 ```
 
 Tests cover data isolation, classification, missingness, task timing, preservation,
@@ -75,10 +81,14 @@ prototype, not a validated assessment instrument.
 
 ## Structure
 
-`app.R` loads the UI/server and pure engine in `R/`. Instructor configuration lives
-in `scenarios/*/scenario.yaml`. Learner support is in `starter/`;
+`app.R` loads the UI/server and pure engine in `R/`. The server is one file per
+part of the journey (`R/server_*.R`) around a shared context in `R/app_server.R`.
+Instructor configuration lives in `scenarios/*/scenario.yaml`. Learner support is in `starter/`;
 test and implementation notes are in `tests/` and `docs/`. The Excel workbook is
 generated from each learner's frozen snapshot, so its rows match their collection.
 
-The YAML is trusted local instructor configuration. Character prose and the
-supported case templates still live in R; adding a scenario requires review.
+The YAML is trusted local instructor configuration. It holds the foods, agent,
+risks, the cook's account, the briefing, events, and every realism setting, so a
+new scenario needs no R changes. The cast (Pat and Lou), the potluck frame, and
+the three case-definition templates stay in the app. Run the review scripts and
+read [engine features](docs/engine-features.md) before using a new scenario.

@@ -67,8 +67,8 @@ allowed identifiers. Writing must contain exactly `reply`; review must contain e
 three true booleans: `supported`, `complete`, and `in_character`. Blank, oversized,
 HTML/URL-containing and numerically changed drafts are rejected deterministically.
 Key scenario terms present in the canonical answer must also survive verbatim
-(case-insensitive): names, roles, days, food labels, symptom names and important
-preparation clues such as "cooked", "temperature", "deep stock pot", "overnight" and "mixed".
+(case-insensitive): names, roles, days, symptom names, every food label, and the
+preparation clues each scenario lists under `cook.locked_terms`.
 The writer receives these locked terms explicitly. Surrounding wording can vary.
 The fresh review checks names, food identities, roles, uncertainty, negations,
 omissions and unsupported claims. This semantic review is probabilistic, rather than

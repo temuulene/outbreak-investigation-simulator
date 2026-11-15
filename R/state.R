@@ -180,7 +180,9 @@ request_task <- function(s, id, audience = "all", domains = character(), foods =
 
 # Each condition is judged from what the investigation has established so far,
 # with a note for the learner when it is not met.
-action_conditions <- function() c("cluster_confirmed", "process_failure_known", "leftovers_taken_home", "ongoing_exposure")
+action_conditions <- function() {
+  c("cluster_confirmed", "process_failure_known", "leftovers_taken_home", "ongoing_exposure")
+}
 
 action_condition_met <- function(s, condition) {
   switch(condition,
@@ -219,10 +221,12 @@ submit_media_response <- function(s, id, text, evidence_ids = integer()) {
   if (length(id) != 1 || !id %in% vapply(s$media_events, `[[`, character(1), "id")) {
     stop("That media event is not available yet.")
   }
-  if (length(text) != 1 || !nzchar(trimws(text)) || nchar(text) > 4000) stop("Write a response of 1 to 4000 characters.")
-  if (anyNA(evidence_ids) || any(evidence_ids != floor(evidence_ids)) || any(!evidence_ids %in% seq_along(s$evidence))) {
-    stop("Choose available evidence references.")
+  if (length(text) != 1 || !nzchar(trimws(text)) || nchar(text) > 4000) {
+    stop("Write a response of 1 to 4000 characters.")
   }
+  known <- !anyNA(evidence_ids) && all(evidence_ids == floor(evidence_ids)) &&
+    all(evidence_ids %in% seq_along(s$evidence))
+  if (!known) stop("Choose available evidence references.")
   entry <- list(
     time = s$clock, id = id, text = trimws(text), evidence_ids = unique(evidence_ids),
     evidence = s$evidence[evidence_ids]

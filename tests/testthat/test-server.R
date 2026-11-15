@@ -41,6 +41,10 @@ test_that("guided journey completes checkpoints in order and reaches the debrief
     session$setInputs(freeze = 1)
     expect_equal(nrow(snapshot()$data), answered)
     expect_match(output$case_description$html, "cases under your definition", fixed = TRUE)
+    session$setInputs(show_rates = TRUE)
+    expect_match(output$rates, "Ate it: cases / total", fixed = TRUE)
+    expect_match(output$rates, "Chicken salad sandwiches", fixed = TRUE)
+    expect_match(output$line_list, "Onset time", fixed = TRUE)
     session$setInputs(curve_interval = "6")
     expect_match(output$epi_curve$alt, "Epidemic curve in 6-hour intervals", fixed = TRUE)
     session$setInputs(analysis_done = 1)
@@ -89,6 +93,8 @@ test_that("optional workflows preserve session evidence and navigation", {
   shiny::testServer(app_server, {
     session$setInputs(scenario_id = "potluck-02", randomize = FALSE, begin = 1)
     expect_equal(s()$sc$id, "potluck-02")
+    session$setInputs(action = "close_hall", action_reason = "Concern", take_action = 1)
+    expect_match(output$action_feedback$html, "Exposure at the hall ended Saturday", fixed = TRUE)
     session$setInputs(character = "organizer", topic = "auto", question = strrep("x", 1201), ask = 1)
     expect_length(s()$interviewed, 0)
     session$setInputs(question = "menu", ask = 2)
@@ -96,9 +102,15 @@ test_that("optional workflows preserve session evidence and navigation", {
     session$setInputs(wait = 1)
     session$setInputs(wait = 2)
     expect_length(s()$media_events, 1)
-    session$setInputs(media_id = "press-call", media_text = "Several reports are being investigated. The source remains uncertain. We are collecting comparable histories.", media_evidence = "1", respond_media = 1)
+    session$setInputs(
+      media_id = "press-call", media_evidence = "1", respond_media = 1,
+      media_text = "Several reports are being investigated. The source remains uncertain. We are collecting histories."
+    )
     expect_length(s()$media_responses, 1)
-    session$setInputs(review_criterion = "communication", review_status = "Instructor review", review_reason = "Review uncertainty and supporting evidence", review_save = 1)
+    session$setInputs(
+      review_criterion = "communication", review_status = "Instructor review",
+      review_reason = "Review uncertainty and supporting evidence", review_save = 1
+    )
     expect_length(s()$instructor_reviews, 1)
     path <- tempfile(fileext = ".json")
     save_session(s(), path, list(step = 3L, furthest = 3L))

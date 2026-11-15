@@ -108,7 +108,9 @@ ui_decision <- function() {
         "Suspect", value = "suspect", p(class = "question-number", "1 of 3 · Your working idea"),
         textInput("suspect", "What might be causing the illness?", placeholder = "It’s okay to say ‘still open’"),
         radioButtons("confidence", "How sure are you?", c("Low", "Medium", "High"), inline = TRUE),
-        textAreaInput("supporting", "What points you in that direction?", placeholder = "A short note is enough.", rows = 2),
+        textAreaInput(
+          "supporting", "What points you in that direction?", placeholder = "A short note is enough.", rows = 2
+        ),
         next_button("reflection_next", "Continue →")
       ),
       tabPanel(
@@ -255,7 +257,10 @@ ui_analysis <- function() {
     ),
     disclosure(
       "Use R, or see the collected records",
-      div(class = "button-row", downloadButton("csv", "Download CSV"), downloadButton("r_script", "Download starter R")),
+      div(
+        class = "button-row", downloadButton("csv", "Download CSV"),
+        downloadButton("r_script", "Download starter R")
+      ),
       p(class = "small-note", paste(
         "Onset and report times are local date-times.",
         "Work out each incubation period from the meal time in your notebook."

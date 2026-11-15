@@ -94,7 +94,8 @@ testthat::test_that("requests are bounded, session isolated, cancellable and dea
   testthat::expect_false(hanging$pending)
   rate <- dialogue_session()
   await_dialogue(dialogue_request_async(rate, "cook", "menu", provider = "gemini", transport = transport, now = 100))
-  testthat::expect_identical(await_dialogue(dialogue_request_async(rate, "cook", "menu", provider = "gemini", transport = transport, now = 101))$status, "limited")
+  limited <- dialogue_request_async(rate, "cook", "menu", provider = "gemini", transport = transport, now = 101)
+  testthat::expect_identical(await_dialogue(limited)$status, "limited")
 })
 
 testthat::test_that("cancelled and late replies cannot become a current request", {

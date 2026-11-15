@@ -2571,67 +2571,91 @@
       "checksum": "fb29cf1041be941bb41a8ce5d18283ec"
     },
     "DESCRIPTION": {
-      "checksum": "0459e16d3dc6e22c61ebc430234c2a14"
+      "checksum": "8c49abcd7e4f9e66d1f05fe2050a3675"
     },
     "R/analysis.R": {
-      "checksum": "ca4eed0904a5738e6eb994459ab00c4f"
+      "checksum": "744e9dd23b946361d0ea0fb219bbcec5"
     },
     "R/app_server.R": {
-      "checksum": "36840a94a6e032fa0692e16d5269ebe9"
+      "checksum": "4e0e7566ebac040fdf538671c84fcac7"
     },
     "R/app_ui.R": {
-      "checksum": "8b69db27979e96498fb0922d3a997f7e"
+      "checksum": "624de64f7210140afacf24fc1bb993d1"
     },
     "R/assessment.R": {
-      "checksum": "44350996f61042885a883b0f1e2d5225"
+      "checksum": "0c8d03f0e8eb3d65a557c07a8f79b5dc"
     },
     "R/case_def.R": {
-      "checksum": "211ba364da448346ac89681cd36052b8"
+      "checksum": "ffba7252aded8fa70a45809407df0e5d"
     },
     "R/characters.R": {
-      "checksum": "7135d450c8466d4d1f3510f72bcabac3"
+      "checksum": "193375f6c5facb8e198f45c233e8f7c5"
     },
     "R/collect.R": {
-      "checksum": "18f19a3315a5931a6c54e538aca285a3"
+      "checksum": "6d6ec4ab25661285c667688373765b48"
     },
     "R/debrief.R": {
-      "checksum": "e5db4766c1e236a2211497ad15ffc8e9"
+      "checksum": "c209e7eb5bc279c83b8ed4d3d2288417"
     },
     "R/dialogue.R": {
-      "checksum": "57e3e47a2660abf6be48c72309a85348"
+      "checksum": "c4a15f0955443cd85906d80c3d4be919"
     },
     "R/generate.R": {
-      "checksum": "81634a9f5795ca59b4aa41c4c79f7af2"
+      "checksum": "2f337d67a44bf7e755281d3f1c38b3e5"
     },
     "R/guide.R": {
-      "checksum": "a0736f835be78194d6c27ca2443e4fef"
+      "checksum": "328000e3cb0a130ab01d2cf4dd4bdfb3"
     },
     "R/persistence.R": {
-      "checksum": "d6536370f3cccf9e8095811a519c4f21"
+      "checksum": "43ea431921fb9f5c23077939e2995033"
     },
     "R/scenario.R": {
-      "checksum": "865db4f2b2d81702c133e7a1ea045d9d"
+      "checksum": "a8944cd183f6274a83914799e348ea9e"
+    },
+    "R/server_analysis.R": {
+      "checksum": "1edc2651c5e0e0e3e9acc02de3820084"
+    },
+    "R/server_debrief.R": {
+      "checksum": "2c85e94191b95341c9a60bef3c085b14"
+    },
+    "R/server_guide.R": {
+      "checksum": "863d97018955961c251d674d89d25e8d"
+    },
+    "R/server_interview.R": {
+      "checksum": "31c8f14215f3b515ddb5935242e9baba"
+    },
+    "R/server_plan.R": {
+      "checksum": "7012a4f6604b410d21c4e91a6e84e103"
+    },
+    "R/server_session.R": {
+      "checksum": "7891c11a9816f806af2eaadd8beafa69"
+    },
+    "R/server_tools.R": {
+      "checksum": "398d49b07540bc8992cb48bf309057df"
     },
     "R/state.R": {
-      "checksum": "248b44b5512237b8d77ec23902b1cb2c"
+      "checksum": "9648b13969edfecea6f79880ada9945a"
     },
     "renv.lock": {
       "checksum": "c72c54f5d74e44fbe5aab040e6937df9"
     },
     "scenarios/potluck-01/scenario.yaml": {
-      "checksum": "7c5ab1b7add1679962afbbc3ada01bd3"
+      "checksum": "0a8ee08798ed799fb82cbf14bee20528"
     },
     "scenarios/potluck-02/scenario.yaml": {
-      "checksum": "f5c14614c57e9a067c19b29c22b6bca2"
+      "checksum": "929510a6aedd69df8604d769821afe77"
+    },
+    "scenarios/potluck-03/scenario.yaml": {
+      "checksum": "3f849bcd779d0a77899d45b70a3b16a1"
     },
     "starter/analysis.R": {
-      "checksum": "315baef32462673b6b5248a34b855dc0"
+      "checksum": "9766fe0530980ddf58f79ed750182eca"
     },
     "www/guide.js": {
       "checksum": "2be5293354bcf84e731ae0d9b63e5f8d"
     },
     "www/style.css": {
-      "checksum": "a864fc6bc24842b9404fd5eb4c511bba"
+      "checksum": "9d838b0ef78133dc83a74f19e2ea0381"
     }
   },
   "users": null
