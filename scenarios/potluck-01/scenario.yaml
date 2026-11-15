@@ -41,7 +41,7 @@ lab: {stool_sensitivity: 0.85, food_sensitivity: 1.0}
 cook:
   dish: chicken_salad
   preparation: I cooked the chicken in one big batch without checking its temperature, then left it cooling in a deep stock pot overnight. I mixed the salad the next day and brought it to the hall.
-  # Clues an optional language model must keep word for word when it rephrases the account.
+  # Clues that optional assisted dialogue must keep word for word when it rephrases the account.
   locked_terms: [chicken, cooked, temperature, cooling, deep stock pot, overnight, mixed]
 interviews: {suggested: 4, max: 6, minutes_per_topic: 5}
 tasks:

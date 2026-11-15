@@ -19,7 +19,7 @@ Optional, each off when absent:
 | `response` | Chance that an ill or a well guest answers the team. |
 | `recall.rumour` | A food that ill guests who did not eat it may still report. |
 | `lab` | Sensitivity of stool culture and of the leftover test. |
-| `cook.locked_terms` | Words an optional language model must keep when it rephrases the cook's account. |
+| `cook.locked_terms` | Words that optional assisted dialogue must keep when it rephrases the cook's account. |
 | `events[].late_reporters` | How many earlier cases report at that event, and their onset range. |
 | `analysis.stratifier` | A confounded food; random seeds must then show the confounding pattern. |
 | `menu_order` | Display order for foods. Keep the vehicle out of first place. |
